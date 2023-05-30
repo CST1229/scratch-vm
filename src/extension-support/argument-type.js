@@ -49,12 +49,12 @@ const ArgumentType = {
     POLYGON: 'polygon',
 
     /**
-     * Costume menu (taken from tw)
+     * Name of costume in the current target
      */
     COSTUME: 'costume',
 
     /**
-     * Sound menu (taken from tw)
+     * Name of sound in the current target
      */
     SOUND: 'sound'
 };

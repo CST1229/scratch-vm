@@ -341,6 +341,11 @@ class ExtensionManager {
             return extensionURL;
         }
 
+        if (this.isExtensionURLLoaded(extensionURL)) {
+            // Extension is already loaded.
+            return;
+        }
+
         if (!this._isValidExtensionURL(extensionURL)) {
             throw new Error(`Invalid extension URL: ${extensionURL}`);
         }
@@ -438,7 +443,7 @@ class ExtensionManager {
                     dispatch.call('runtime', '_refreshExtensionPrimitives', info);
                 })
                 .catch(e => {
-                    log.error(`Failed to refresh built-in extension primitives: ${JSON.stringify(e)}`);
+                    log.error(`Failed to refresh built-in extension primitives: ${e}`);
                 })
         );
         return Promise.all(allPromises);
@@ -502,7 +507,7 @@ class ExtensionManager {
         if (e) {
             workerInfo.reject(e);
         } else {
-            workerInfo.resolve(id);
+            workerInfo.resolve();
         }
     }
 
@@ -531,16 +536,6 @@ class ExtensionManager {
         dispatch.call('runtime', '_registerExtensionPrimitives', extensionInfo).catch(e => {
             log.error(`Failed to register primitives for extension on service ${serviceName}:`, e);
         });
-    }
-
-    /**
-     * Modify the provided text as necessary to ensure that it may be used as an attribute value in valid XML.
-     * @param {string} text - the text to be sanitized
-     * @returns {string} - the sanitized text
-     * @private
-     */
-    _sanitizeID(text) {
-        return text.toString().replace(/[<"&]/, '_');
     }
 
     /**
@@ -678,7 +673,6 @@ class ExtensionManager {
             blockAllThreads: false,
             arguments: {}
         }, blockInfo);
-        blockInfo.opcode = blockInfo.opcode && this._sanitizeID(blockInfo.opcode);
         blockInfo.text = blockInfo.text || blockInfo.opcode;
 
         switch (blockInfo.blockType) {
@@ -691,20 +685,21 @@ class ExtensionManager {
             if (!blockInfo.opcode) {
                 throw new Error(`Missing opcode for button: ${blockInfo.text}`);
             }
-
-            const funcName = blockInfo.opcode;
-            const callBlockFunc = (...args) => dispatch.call(serviceName, funcName, ...args);
-
-            blockInfo.func = callBlockFunc;
+            blockInfo.callFunc = () => {
+                dispatch.call(serviceName, blockInfo.func);
+            };
             break;
         case BlockType.LABEL:
+            if (blockInfo.opcode) {
+                log.warn(`Ignoring opcode "${blockInfo.opcode}" for label: ${blockInfo.text}`);
+            }
             break;
         default: {
             if (!blockInfo.opcode) {
                 throw new Error('Missing opcode for block');
             }
 
-            const funcName = blockInfo.func ? this._sanitizeID(blockInfo.func) : blockInfo.opcode;
+            const funcName = blockInfo.func || blockInfo.opcode;
 
             const getBlockInfo = blockInfo.isDynamic ?
                 args => args && args.mutation && args.mutation.blockInfo :
@@ -790,6 +785,10 @@ class ExtensionManager {
             }
         }
         return extensionURLs;
+    }
+
+    isExtensionURLLoaded (url) {
+        return Object.values(this.workerURLs).includes(url);
     }
 }
 

@@ -505,6 +505,12 @@ class Runtime extends EventEmitter {
          * Do not update this directly. Use Runtime.setEnforcePrivacy() instead.
          */
         this.enforcePrivacy = true;
+
+        /**
+         * Internal map of opaque identifiers to the callback to run that function.
+         * @type {Map<string, function>}
+         */
+        this.extensionButtons = new Map();
     }
 
     /**
@@ -636,6 +642,20 @@ class Runtime extends EventEmitter {
      */
     static get COMPILE_ERROR () {
         return 'COMPILE_ERROR';
+    }
+
+    /**
+     * Event called before any block is executed.
+     */
+    static get BEFORE_EXECUTE () {
+        return 'BEFORE_EXECUTE';
+    }
+
+    /**
+     * Event called after every block in the project has been executed.
+     */
+    static get AFTER_EXECUTE () {
+        return 'AFTER_EXECUTE';
     }
 
     /**
@@ -997,7 +1017,7 @@ class Runtime extends EventEmitter {
      * @private
      */
     _makeExtensionMenuId (menuName, extensionId) {
-        return `${extensionId}_menu_${xmlEscape(menuName)}`;
+        return `${extensionId}_menu_${menuName}`;
     }
 
     /**
@@ -1111,28 +1131,19 @@ class Runtime extends EventEmitter {
         }
 
         if (extensionInfo.docsURI) {
-            try {
-                const url = new URL(extensionInfo.docsURI);
-                if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-                    throw new Error('invalid protocol');
-                }
-                const xml = '<button ' +
-                    `text="${xmlEscape(maybeFormatMessage({
-                        // note: this translation is hardcoded in translation upload scripts
-                        id: 'tw.blocks.openDocs',
-                        default: 'Open Documentation',
-                        description: 'Button to open extensions docsURI'
-                    }))}" ` +
-                    'callbackKey="OPEN_DOCUMENTATION" ' +
-                    `web-class="docs-uri-${xmlEscape(extensionInfo.docsURI)}"></button>`;
-                const block = {
-                    info: {},
-                    xml
-                };
-                categoryInfo.blocks.push(block);
-            } catch (e) {
-                log.warn('cannot create docsURI button', e);
-            }
+            const xml = '<button ' +
+                `text="${xmlEscape(maybeFormatMessage({
+                    id: 'tw.blocks.openDocs',
+                    default: 'Open Documentation',
+                    description: 'Button that opens site with more documentation about an extension'
+                }))}" ` +
+                'callbackKey="OPEN_EXTENSION_DOCS" ' +
+                `callbackData="${xmlEscape(extensionInfo.docsURI)}"></button>`;
+            const block = {
+                info: {},
+                xml
+            };
+            categoryInfo.blocks.push(block);
         }
 
         for (const blockInfo of extensionInfo.blocks) {
@@ -1288,11 +1299,12 @@ class Runtime extends EventEmitter {
             return this._convertSeparatorForScratchBlocks(blockInfo);
         }
 
-        if (blockInfo.blockType === BlockType.LABEL) 
+        if (blockInfo.blockType === BlockType.LABEL) {
             return this._convertLabelForScratchBlocks(blockInfo);
+        }
 
         if (blockInfo.blockType === BlockType.BUTTON) {
-            return this._convertButtonForScratchBlocks(blockInfo);
+            return this._convertButtonForScratchBlocks(blockInfo, categoryInfo);
         }
 
         return this._convertBlockForScratchBlocks(blockInfo, categoryInfo);
@@ -1440,7 +1452,7 @@ class Runtime extends EventEmitter {
 
         const mutation = blockInfo.isDynamic ? `<mutation blockInfo="${xmlEscape(JSON.stringify(blockInfo))}"/>` : '';
         const inputs = context.inputList.join('');
-        const blockXML = `<block type="${extendedOpcode}">${mutation}${inputs}</block>`;
+        const blockXML = `<block type="${xmlEscape(extendedOpcode)}">${mutation}${inputs}</block>`;
 
         return {
             info: context.blockInfo,
@@ -1464,19 +1476,18 @@ class Runtime extends EventEmitter {
     }
 
     /**
-     * Generate generate the xml for a toolbox lable.
+     * Generate a label between blocks categories or sub-categories.
      * @param {ExtensionBlockMetadata} blockInfo - the block to convert
-     * @param {CategoryInfo} categoryInfo - the category for this block
      * @returns {ConvertedBlockInfo} - the converted & original block information
      * @private
      */
     _convertLabelForScratchBlocks (blockInfo) {
         return {
             info: blockInfo,
-            xml: `<label text="${blockInfo.text}"></label>`
+            xml: `<label text="${xmlEscape(blockInfo.text)}"></label>`
         };
     }
-
+    
     /**
      * Convert a button for scratch-blocks. A button has no opcode but specifies a callback name in the `func` field.
      * @param {ExtensionBlockMetadata} buttonInfo - the button to convert
@@ -1485,13 +1496,31 @@ class Runtime extends EventEmitter {
      * @returns {ConvertedBlockInfo} - the converted & original button information
      * @private
      */
-    _convertButtonForScratchBlocks (buttonInfo) {
+    _convertButtonForScratchBlocks (buttonInfo, categoryInfo) {
         const extensionMessageContext = this.makeMessageContextForTarget();
         const buttonText = maybeFormatMessage(buttonInfo.text, extensionMessageContext);
+        const nativeCallbackKeys = ['MAKE_A_LIST', 'MAKE_A_PROCEDURE', 'MAKE_A_VARIABLE'];
+        if (nativeCallbackKeys.includes(buttonInfo.func)) {
+            return {
+                info: buttonInfo,
+                xml: `<button text="${xmlEscape(buttonText)}" callbackKey="${xmlEscape(buttonInfo.func)}"></button>`
+            };
+        }
+        // Callbacks with data will be forwarded from GUI
+        const id = `${categoryInfo.id}_${buttonInfo.func}`;
+        // callFunc is set by extension manager
+        this.extensionButtons.set(id, buttonInfo.callFunc);
         return {
             info: buttonInfo,
-            xml: `<button text="${buttonText}" callbackKey="${buttonInfo.opcode}"></button>`
+            xml: `<button text="${xmlEscape(buttonText)}"` +
+                ' callbackKey="EXTENSION_CALLBACK"' +
+                ` callbackData="${xmlEscape(id)}"></button>`
         };
+    }
+
+    handleExtensionButtonPress (buttonData) {
+        const callback = this.extensionButtons.get(buttonData);
+        callback();
     }
 
     /**
@@ -1527,9 +1556,6 @@ class Runtime extends EventEmitter {
      * @private
      */
     _convertPlaceholders (context, match, placeholder) {
-        // Sanitize the placeholder to ensure valid XML
-        placeholder = placeholder.replace(/[<"&]/, '_');
-
         // Determine whether the argument type is one of the known standard field types
         const argInfo = context.blockInfo.arguments[placeholder] || {};
         let argTypeInfo = ArgumentTypeMap[argInfo.type] || {};
@@ -1557,8 +1583,8 @@ class Runtime extends EventEmitter {
             };
 
             const defaultValue =
-                typeof argInfo.defaultValue === 'undefined' ? '' :
-                    xmlEscape(maybeFormatMessage(argInfo.defaultValue, this.makeMessageContextForTarget()).toString());
+                typeof argInfo.defaultValue === 'undefined' ? null :
+                    maybeFormatMessage(argInfo.defaultValue, this.makeMessageContextForTarget()).toString();
 
             if (argTypeInfo.check) {
                 // Right now the only type of 'check' we have specifies that the
@@ -1591,13 +1617,13 @@ class Runtime extends EventEmitter {
 
             // <value> is the ScratchBlocks name for a block input.
             if (valueName) {
-                context.inputList.push(`<value name="${placeholder}">`);
+                context.inputList.push(`<value name="${xmlEscape(placeholder)}">`);
             }
 
             // The <shadow> is a placeholder for a reporter and is visible when there's no reporter in this input.
             // Boolean inputs don't need to specify a shadow in the XML.
             if (shadowType) {
-                context.inputList.push(`<shadow type="${shadowType}">`);
+                context.inputList.push(`<shadow type="${xmlEscape(shadowType)}">`);
             }
 
             if (shadowType === 'polygon') {
@@ -1606,11 +1632,9 @@ class Runtime extends EventEmitter {
             }
 
             // A <field> displays a dynamic value: a user-editable text field, a drop-down menu, etc.
-            // Leave out the field if defaultValue or fieldName are not specified (unless it is a string & field name is specified)
-            if (fieldName) {
-                if ((defaultValue) || ((argInfo.type === "string") && (!argInfo.menu))) {
-                    context.inputList.push(`<field name="${fieldName}">${defaultValue}</field>`);
-                }
+            // Leave out the field if defaultValue or fieldName are not specified
+            if (defaultValue !== null && fieldName) {
+                context.inputList.push(`<field name="${xmlEscape(fieldName)}">${xmlEscape(defaultValue)}</field>`);
             }
 
             if (shadowType) {
@@ -1660,7 +1684,7 @@ class Runtime extends EventEmitter {
                 ? orderBlocks
                 : blocks => blocks;
 
-            const colorXML = `colour="${color1}" secondaryColour="${color2}"`;
+            const colorXML = `colour="${xmlEscape(color1)}" secondaryColour="${xmlEscape(color2)}"`;
 
             // Use a menu icon if there is one. Otherwise, use the block icon. If there's no icon,
             // the category menu will show its default colored circle.
@@ -1671,17 +1695,24 @@ class Runtime extends EventEmitter {
                 menuIconURI = categoryInfo.blockIconURI;
             }
             const menuIconXML = menuIconURI ?
-                `iconURI="${menuIconURI}"` : '';
+                `iconURI="${xmlEscape(menuIconURI)}"` : '';
 
             let statusButtonXML = '';
             if (categoryInfo.showStatusButton) {
                 statusButtonXML = 'showStatusButton="true"';
             }
 
+            let xml = `<category name="${xmlEscape(name)}"`;
+            xml += ` id="${xmlEscape(categoryInfo.id)}"`;
+            xml += ` ${statusButtonXML}`;
+            xml += ` ${colorXML}`;
+            xml += ` ${menuIconXML}>`;
+            xml += orderBlocks(paletteBlocks.map(block => block.xml)).join('');
+            xml += '</category>';
+
             return {
                 id: categoryInfo.id,
-                xml: `<category name="${name}" id="${categoryInfo.id}" ${statusButtonXML} ${colorXML} ${menuIconXML}>${
-                    orderBlocks(paletteBlocks.map(block => block.xml)).join('')}</category>`
+                xml
             };
         });
     }
@@ -2400,10 +2431,12 @@ class Runtime extends EventEmitter {
             }
             this.profiler.start(stepThreadsProfilerId);
         }
+        this.emit(Runtime.BEFORE_EXECUTE);
         const doneThreads = this.sequencer.stepThreads();
         if (this.profiler !== null) {
             this.profiler.stop();
         }
+        this.emit(Runtime.AFTER_EXECUTE);
         this._updateGlows(doneThreads);
         // Add done threads so that even if a thread finishes within 1 frame, the green
         // flag will still indicate that a script ran.
@@ -2643,7 +2676,11 @@ class Runtime extends EventEmitter {
                 const ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><path d="M14.92 1.053A13.835 13.835 0 0 0 1.052 14.919v18.162a13.835 13.835 0 0 0 13.866 13.866h18.162a13.835 13.835 0 0 0 13.866-13.866V14.919A13.835 13.835 0 0 0 33.081 1.053zm16.6 12.746L41.72 24 31.52 34.201l-3.276-3.275L35.17 24l-6.926-6.926Zm-15.116.073 3.278 3.278L12.83 24l6.926 6.926L16.48 34.2 6.28 24Z" style="fill:#29beb8;fill-opacity:1;stroke:none;stroke-width:1.51371;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"/></svg>';
                 blockInfo = {
                     id: ID,
-                    name: 'Addons',
+                    name: maybeFormatMessage({
+                        id: 'tw.blocks.addons',
+                        default: 'Addons',
+                        description: 'Name of the addon block category in the extension list'
+                    }),
                     color1: '#29beb8',
                     color2: '#3aa8a4',
                     color3: '#3aa8a4',

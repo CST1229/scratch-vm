@@ -18,19 +18,20 @@ const StringUtil = require('../util/string-util');
 const VariableUtil = require('../util/variable-util');
 const Clone = require('../util/clone');
 const compress = require('./tw-compress-sb3');
-const OldExtensions = require('./extension patcher');
+const OldExtensions = require('./extension-patcher');
+const defaultExtensionURLs = require('./tw-default-extension-urls');
 
 const {loadCostume} = require('../import/load-costume.js');
 const {loadSound} = require('../import/load-sound.js');
 const {deserializeCostume, deserializeSound} = require('./deserialize-assets.js');
-const replacersPatch = require('./replacers patch.json');
+const replacersPatch = require('./replacers-patch.json');
 
 const hasOwnProperty = Object.prototype.hasOwnProperty;
 
 /**
  * @typedef {object} ImportedProject
  * @property {Array.<Target>} targets - the imported Scratch 3.0 target objects.
- * @property {ImportedExtensionsInfo} extensionsInfo - the ID of each extension actually used by this project.
+ * @property {ImportedExtensionsInfo} extensions - the ID of each extension actually used by this project.
  */
 
 /**
@@ -612,7 +613,7 @@ const getSimplifiedLayerOrdering = function (targets) {
     return MathUtil.reducedSortOrdering(layerOrders);
 };
 
-const serializeMonitors = function (monitors, runtime) {
+const serializeMonitors = function (monitors, runtime, extensions) {
     // Monitors position is always stored as position from top-left corner in 480x360 stage.
     const xOffset = (runtime.stageWidth - 480) / 2;
     const yOffset = (runtime.stageHeight - 360) / 2;
@@ -621,7 +622,15 @@ const serializeMonitors = function (monitors, runtime) {
         // https://github.com/LLK/scratch-vm/issues/2331
         .filter(monitorData => {
             const extensionID = getExtensionIdForOpcode(monitorData.opcode);
-            return !extensionID || monitorData.visible;
+            if (!extensionID) {
+                // Native block, always safe
+                return true;
+            }
+            if (monitorData.visible) {
+                extensions.add(extensionID);
+                return true;
+            }
+            return false;
         })
         .map(monitorData => {
             const serializedMonitor = {
@@ -643,7 +652,10 @@ const serializeMonitors = function (monitors, runtime) {
                 serializedMonitor.isDiscrete = monitorData.isDiscrete;
             }
             return serializedMonitor;
-        });
+        })
+        // By default the sequence is lazily evaluated, but we want it to be evaluated right
+        // now to update the used extension list.
+        .toArray();
 };
 
 /**
@@ -682,7 +694,7 @@ const serialize = function (runtime, targetId, {allowOptimization = true} = {}) 
 
     obj.targets = serializedTargets;
 
-    obj.monitors = serializeMonitors(runtime.getMonitorState(), runtime);
+    obj.monitors = serializeMonitors(runtime.getMonitorState(), runtime, extensions);
 
     // Assemble extension list
     obj.extensions = Array.from(extensions);
@@ -1420,7 +1432,7 @@ const deserialize = function (json, runtime, zip, isSingleSprite) {
     extensionPatcher.registerExtensions(ExtensionPatches);
     const extensions = {
         extensionIDs: new Set(),
-        extensionURLs: new Map(),
+        extensionURLs: new Map(Object.entries(defaultExtensionURLs)),
         extensionData: {},
         patcher: extensionPatcher
     };
@@ -1434,7 +1446,9 @@ const deserialize = function (json, runtime, zip, isSingleSprite) {
 
     // Extract custom extension IDs, if they exist.
     if (json.extensionURLs) {
-        extensions.extensionURLs = new Map(Object.entries(json.extensionURLs));
+        for (const [id, url] of Object.entries(json.extensionURLs)) {
+            extensions.extensionURLs.set(id, url);
+        }
     }
     if (json.extensionData) {
         extensions.extensionData = json.extensionData;

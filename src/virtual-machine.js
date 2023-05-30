@@ -14,6 +14,8 @@ const ExtensionManager = require('./extension-support/extension-manager');
 const log = require('./util/log');
 const MathUtil = require('./util/math-util');
 const Runtime = require('./engine/runtime');
+const RenderedTarget = require('./sprites/rendered-target');
+const Sprite = require('./sprites/sprite');
 const StringUtil = require('./util/string-util');
 const formatMessage = require('format-message');
 
@@ -213,6 +215,14 @@ class VirtualMachine extends EventEmitter {
         this.addListener('workspaceUpdate', () => {
             this.extensionManager.refreshDynamicCategorys();
         });
+
+        /**
+         * Export some internal classes for extensions.
+         */
+        this.exports = {
+            Sprite,
+            RenderedTarget
+        };
     }
 
     /**
@@ -306,6 +316,10 @@ class VirtualMachine extends EventEmitter {
     enableDebug () {
         this.runtime.enableDebug();
         return 'enabled debug mode';
+    }
+
+    handleExtensionButtonPress (buttonData) {
+        this.runtime.handleExtensionButtonPress(buttonData);
     }
 
     /**
@@ -483,9 +497,9 @@ class VirtualMachine extends EventEmitter {
     }
 
     /**
-     * @returns {string} Project in a Scratch 3.0 JSON representation.
+     * @returns {JSZip} JSZip zip object representing the sb3.
      */
-    saveProjectSb3 () {
+    _saveProjectZip () {
         const soundDescs = serializeSounds(this.runtime);
         const costumeDescs = serializeCostumes(this.runtime);
         const projectJson = this.toJSON();
@@ -498,19 +512,39 @@ class VirtualMachine extends EventEmitter {
         zip.file('project.json', projectJson);
         this._addFileDescsToZip(soundDescs.concat(costumeDescs), zip);
 
-        return zip.generateAsync({
-            type: 'blob',
+        return zip;
+    }
+
+    /**
+     * @param {JSZip.OutputType} [type] JSZip output type. Defaults to 'blob' for Scratch compatibility.
+     * @returns {Promise<unknown>} Compressed sb3 file in a type determined by the type argument.
+     */
+    saveProjectSb3 (type) {
+        return this._saveProjectZip().generateAsync({
+            type: type || 'blob',
             mimeType: 'application/x.scratch.sb3',
-            compression: 'DEFLATE',
-            compressionOptions: {
-                level: 6 // Tradeoff between best speed (1) and best compression (9)
-            }
+            compression: 'DEFLATE'
         });
     }
 
     /**
-     * tw: Serailize the project into a map of files without actually zipping the project.
-     * @returns {Record<Uint8Array>} Files of the project.
+     * @param {JSZip.OutputType} [type] JSZip output type. Defaults to 'arraybuffer'.
+     * @returns {StreamHelper} JSZip StreamHelper object generating the compressed sb3.
+     * See: https://stuk.github.io/jszip/documentation/api_streamhelper.html
+     */
+    saveProjectSb3Stream (type) {
+        return this._saveProjectZip().generateInternalStream({
+            type: type || 'arraybuffer',
+            mimeType: 'application/x.scratch.sb3',
+            compression: 'DEFLATE'
+        });
+    }
+
+    /**
+     * tw: Serialize the project into a map of files without actually zipping the project.
+     * The buffers returned are the exact same ones used internally, not copies. Avoid directly
+     * manipulating them (except project.json, which is created by this function).
+     * @returns {Record<string, Uint8Array>} Map of file name to the raw data for that file.
      */
     saveProjectSb3DontZip () {
         const soundDescs = serializeSounds(this.runtime);
@@ -1416,6 +1450,7 @@ class VirtualMachine extends EventEmitter {
         if (locale !== formatMessage.setup().locale) {
             formatMessage.setup({locale: locale, translations: {[locale]: messages}});
         }
+        this.emit('LOCALE_CHANGED', locale);
         return this.extensionManager.refreshBlocks();
     }
 
