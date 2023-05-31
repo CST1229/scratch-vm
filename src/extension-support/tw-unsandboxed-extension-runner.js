@@ -16,19 +16,6 @@ const parseURL = url => {
 };
 
 /**
- * Parse a URL object or return null.
- * @param {string} url
- * @returns {URL|null}
- */
-const parseURL = url => {
-    try {
-        return new URL(url, location.href);
-    } catch (e) {
-        return null;
-    }
-};
-
-/**
  * Sets up the global.Scratch API for an unsandboxed extension.
  * @param {VirtualMachine} vm
  * @returns {Promise<object[]>} Resolves with a list of extension objects when Scratch.extensions.register is called.
