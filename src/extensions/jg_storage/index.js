@@ -46,7 +46,7 @@ class JgStorageBlocks {
                         KEY: {
                             type: ArgumentType.STRING,
                             defaultValue: "key"
-                        },
+                        }
                     }
                 },
                 {
@@ -61,7 +61,7 @@ class JgStorageBlocks {
                         VALUE: {
                             type: ArgumentType.STRING,
                             defaultValue: "value"
-                        },
+                        }
                     }
                 },
                 {
@@ -94,7 +94,7 @@ class JgStorageBlocks {
                         KEY: {
                             type: ArgumentType.STRING,
                             defaultValue: "key"
-                        },
+                        }
                     }
                 },
                 {
@@ -109,7 +109,7 @@ class JgStorageBlocks {
                         VALUE: {
                             type: ArgumentType.STRING,
                             defaultValue: "value"
-                        },
+                        }
                     }
                 },
                 {
@@ -148,7 +148,7 @@ class JgStorageBlocks {
                         SERVER: {
                             type: ArgumentType.STRING,
                             menu: "serverType"
-                        },
+                        }
                     }
                 },
                 {
@@ -179,7 +179,7 @@ class JgStorageBlocks {
                         KEY: {
                             type: ArgumentType.STRING,
                             defaultValue: "key"
-                        },
+                        }
                     }
                 },
                 {
@@ -194,7 +194,7 @@ class JgStorageBlocks {
                         VALUE: {
                             type: ArgumentType.STRING,
                             defaultValue: "value"
-                        },
+                        }
                     }
                 },
                 {
@@ -225,22 +225,32 @@ class JgStorageBlocks {
      * @returns {string} Prefix for any keys saved
      */
     getPrefix(projectId) {
-        return `PM_PROJECTSTORAGE_EXT_${projectId == null ? "" : `${projectId}_`}`;
+        return `PM_PROJECTSTORAGE_EXT_${projectId === null ? "" : `${projectId}_`}`;
     }
     getAllKeys(projectId) {
-        return Object.keys(localStorage).filter(key => key.startsWith(this.getPrefix(projectId))).map(key => key.replace(this.getPrefix(projectId), ""));
+        return Object.keys(localStorage).filter(key => key.startsWith(this.getPrefix(projectId)))
+            .map(key => key.replace(this.getPrefix(projectId), ""));
     }
     getProjectId() {
-        /* todo: get the project id in a like 190x better way lol */
+        /*
         const hash = String(window.location.hash).replace(/#/gmi, "");
         return Cast.toNumber(hash);
+        */
+        // this would probably be able to be done 100000x better
+        // if we used an actual project id system instead of the url params hack
+        const params = new URLSearchParams(window.location.search.substring(1));
+        const pUrl = params.get("project_url");
+        if (!pUrl) throw new Error("No project URL found");
+        const pId = pUrl.match(/\/projects\/(\w+)/i);
+        if (!pId || !pId[1]) throw new Error("No project ID found");
+        return pId[1];
     }
 
     runPenguinWebRequest(url, options, ifFailReturn) {
         this.waitingForResponse = true;
         this.serverFailedResponse = false;
         this.serverError = "";
-        return new Promise((resolve) => {
+        return new Promise(resolve => {
             let promise = null;
             if (options !== null) {
                 promise = fetch(url, options);
@@ -263,15 +273,16 @@ class JgStorageBlocks {
                     this.serverFailedResponse = false;
                     this.serverError = "";
                     resolve(text);
-                }).catch(err => {
-                    this.waitingForResponse = false;
-                    this.serverFailedResponse = true;
-                    this.serverError = Cast.toString(err);
-                    if (ifFailReturn !== null) {
-                        return resolve(ifFailReturn);
-                    }
-                    resolve(err);
                 })
+                    .catch(err => {
+                        this.waitingForResponse = false;
+                        this.serverFailedResponse = true;
+                        this.serverError = Cast.toString(err);
+                        if (ifFailReturn !== null) {
+                            return resolve(ifFailReturn);
+                        }
+                        resolve(err);
+                    });
             }).catch(err => {
                 this.waitingForResponse = false;
                 this.serverFailedResponse = true;
@@ -280,12 +291,12 @@ class JgStorageBlocks {
                     return resolve(ifFailReturn);
                 }
                 resolve(err);
-            })
-        })
+            });
+        });
     }
 
     getCurrentServer() {
-        return `https://pmstorageapi.freshpenguin112.repl.co/`
+        return `https://pmstorageapi.freshpenguin112.repl.co/`;
     }
 
     // blocks

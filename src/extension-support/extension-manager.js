@@ -682,7 +682,9 @@ class ExtensionManager {
             }
             break;
         case BlockType.BUTTON:
-            if (!blockInfo.opcode) {
+            // compatibility with pm extensions
+            if (!blockInfo.func && blockInfo.opcode) blockInfo.func = blockInfo.opcode;
+            if (!blockInfo.func) {
                 throw new Error(`Missing opcode for button: ${blockInfo.text}`);
             }
             blockInfo.callFunc = () => {
