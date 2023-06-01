@@ -225,7 +225,7 @@ class JgStorageBlocks {
      * @returns {string} Prefix for any keys saved
      */
     getPrefix(projectId) {
-        return `PM_PROJECTSTORAGE_EXT_${projectId === null ? "" : `${projectId}_`}`;
+        return `CODEBASE_PM_PROJECTSTORAGE_EXT_${projectId === null ? "" : `${projectId}_`}`;
     }
     getAllKeys(projectId) {
         return Object.keys(localStorage).filter(key => key.startsWith(this.getPrefix(projectId)))
