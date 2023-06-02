@@ -76,20 +76,26 @@ class Scratch3OperatorsBlocks {
     
     
     javascriptOutput (args) {
+        return "The eval block has been disabled."
+        /*
         return new Promise((resolve, reject) => {
             const js = Cast.toString(args.JS);
             SandboxRunner.execute(js).then(result => {
                 resolve(result.value)
             })
         })
+        */
     }
     javascriptBoolean(args) {
+        return "The eval block has been disabled."
+        /*
         return new Promise((resolve, reject) => {
             const js = Cast.toString(args.JS);
             SandboxRunner.execute(js).then(result => {
                 resolve(result.value === true)
             })
         })
+        */
     }
 
     charToCode (args) {

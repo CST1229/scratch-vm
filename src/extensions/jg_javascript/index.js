@@ -80,6 +80,8 @@ class jgJavascript {
 
     // util
     evaluateCode(code) {
+        return "The eval block has been disabled."
+        /*
         return new Promise((resolve) => {
             SandboxRunner.execute(code).then(result => {
                 // result is { value: any, success: boolean }
@@ -87,6 +89,7 @@ class jgJavascript {
                 return resolve(result.value);
             })
         })
+        */
     }
 
     // blocks

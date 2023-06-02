@@ -76,13 +76,16 @@ class Scratch3ControlBlocks {
         };
     }
 
-    runJavascript(args) {
+    runJavascript() {
+        return "The eval block has been disabled."
+        /*
         return new Promise((resolve, reject) => {
             const js = Cast.toString(args.JS);
             SandboxRunner.execute(js).then(result => {
                 resolve(result.value)
             })
         })
+        */
     }
 
     repeat (args, util) {

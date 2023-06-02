@@ -2,7 +2,6 @@ const formatMessage = require('format-message');
 const BlockType = require('../../extension-support/block-type');
 const ArgumentType = require('../../extension-support/argument-type');
 const ProjectPermissionManager = require('../../util/project-permissions');
-const SandboxRunner = require('../../util/sandboxed-javascript-runner');
 const beatgammit = {
     deflate: require('./beatgammit-deflate'),
     inflate: require('./beatgammit-inflate')
@@ -537,6 +536,8 @@ class JgPrismBlocks {
     }
     // eslint-disable-next-line no-unused-vars
     evaluate(args, util, realBlockInfo) {
+        return "The eval block has been disabled";
+        /*
         return new Promise((resolve, reject) => {
             // if (!(this.isJSPermissionGranted)) {
             //     this.isJSPermissionGranted = ProjectPermissionManager.RequestPermission("javascript");
@@ -552,9 +553,12 @@ class JgPrismBlocks {
                 resolve(result.value)
             })
         })
+            */
     }
     // eslint-disable-next-line no-unused-vars
     evaluate2(args, util, realBlockInfo) {
+        return "The eval block has been disabled";
+        /*
         return new Promise((resolve, reject) => {
             // if (!(this.isJSPermissionGranted)) {
             //     this.isJSPermissionGranted = ProjectPermissionManager.RequestPermission("javascript");
@@ -578,9 +582,12 @@ class JgPrismBlocks {
             // return result;
             // return "";
         })
+            */
     }
     // eslint-disable-next-line no-unused-vars
     evaluate3(args, util, realBlockInfo) {
+        return "The eval block has been disabled";
+        /*
         return new Promise((resolve, reject) => {
             SandboxRunner.execute(String(args.JAVASCRIPT)).then(result => {
                 if (!result.success) {
@@ -589,6 +596,7 @@ class JgPrismBlocks {
                 resolve(result.value === true)
             })
         })
+        */
         // if (!(this.isJSPermissionGranted)) {
         //     this.isJSPermissionGranted = ProjectPermissionManager.RequestPermission("javascript");
         //     if (!this.isJSPermissionGranted) return false;

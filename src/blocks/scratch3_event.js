@@ -71,12 +71,15 @@ class Scratch3EventBlocks {
     }
 
     whenjavascript (args) {
+        return false;
+        /*
         return new Promise((resolve, reject) => {
             const js = Cast.toString(args.JS);
             SandboxRunner.execute(js).then(result => {
                 resolve(result.value === true)
             })
         })
+        */
     }
 
     getHats () {
