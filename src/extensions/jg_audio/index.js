@@ -69,7 +69,7 @@ class AudioExtension {
     getInfo() {
         return {
             id: 'jgExtendedAudio',
-            name: 'Extended Audio',
+            name: 'Audio Groups',
             color1: '#E256A1',
             color2: '#D33388',
             isDynamic: true,
