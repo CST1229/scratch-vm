@@ -70,7 +70,7 @@ ${blockSeparator}
 %b1>
 ${blockSeparator}
 %b2>
-`
+`;
 
 /**
  * Class of 2023
@@ -91,7 +91,7 @@ class pmSensingExpansion {
 
         let idx = 0;
         for (const block of extensionBlocks) {
-            categoryBlocks = categoryBlocks.replace('%b' + idx + ">", block);
+            categoryBlocks = categoryBlocks.replace(`%b${idx}>`, block);
             idx++;
         }
 
@@ -217,7 +217,7 @@ class pmSensingExpansion {
                     text: 'project in iframe?',
                     blockType: BlockType.BOOLEAN,
                     disableMonitor: true
-                },
+                }
             ],
             menus: {
                 urlSections: {
@@ -256,21 +256,31 @@ class pmSensingExpansion {
         if (!validOptions.includes(option)) return '';
 
         switch (option) {
-            case 'subdomain': {
-                const origin = urlObject.origin;
-                if (origin.split('.').length <= 2) return '';
-                const splitSubdomain = origin.split('.')[0];
-                const subdomain = splitSubdomain.split('//')[1];
-                if (!subdomain) return '';
-                return subdomain.replace(/\./gmi, '');
+        case 'subdomain': {
+            const origin = urlObject.origin;
+            if (origin.split('.').length <= 2) return '';
+            const splitSubdomain = origin.split('.')[0];
+            const subdomain = splitSubdomain.split('//')[1];
+            if (!subdomain) return '';
+            return subdomain.replace(/\./gmi, '');
+        }
+        case 'path': {
+            const origin = urlObject.origin;
+            if (origin.endsWith('/')) {
+                return urlObject.href.replace(origin, '');
             }
-            case 'path': {
-                const origin = urlObject.origin;
-                if (origin.endsWith('/')) {
-                    return urlObject.href.replace(origin, '');
+            return urlObject.href.replace(`${origin}/`, '');
+        }
+        case 'search': {
+            const params = new URLSearchParams(location.search.substring(1));
+            if (params.size === 0) return "";
+            for (const str of params.keys()) {
+                if (str === "save_url" || str === "project_url" || str === "save_thumb") {
+                    params.delete(str);
                 }
-                return urlObject.href.replace(origin + '/', '');
             }
+            return `?${params.toString()}`;
+        }
         }
 
         return Cast.toString(urlObject[option]);
@@ -288,29 +298,27 @@ class pmSensingExpansion {
     // blocks
     batteryPercentage() {
         if ('getBattery' in navigator) {
-            return new Promise((resolve) => {
+            return new Promise(resolve => {
                 navigator.getBattery().then(batteryManager => {
                     resolve(batteryManager.level * 100);
-                }).catch(() => {
-                    return 100;
-                });
+                })
+                    .catch(() => 100);
             });
-        } else {
-            return 100;
-        }
+        } 
+        return 100;
+        
     }
     batteryCharging() {
         if ('getBattery' in navigator) {
-            return new Promise((resolve) => {
+            return new Promise(resolve => {
                 navigator.getBattery().then(batteryManager => {
                     resolve(batteryManager.charging);
-                }).catch(() => {
-                    return true;
-                });
+                })
+                    .catch(() => true);
             });
-        } else {
-            return true;
-        }
+        } 
+        return true;
+        
     }
 
     vibrateDevice() {
@@ -333,64 +341,64 @@ class pmSensingExpansion {
         const check = lang.split("-")[0].toLowerCase();
 
         switch (check) {
-            case 'en':
-                return 'English';
-            case 'es':
-                return 'Spanish';
-            case 'fr':
-                return 'French';
-            case 'it':
-                return 'Italian';
-            case 'pt':
-                return 'Portuguese';
-            case 'de':
-                return 'German';
-            case 'ru':
-                return 'Russian';
-            case 'ar':
-                return 'Arabic';
-            case 'zh':
-                return 'Chinese (Mandarin)';
-            case 'he':
-                return 'Hebrew';
-            case 'ja':
-                return 'Japanese';
-            case 'ko':
-                return 'Korean';
-            case 'sw':
-                return 'Swahili';
-            case 'sq':
-                return 'Albanian';
-            case 'hy':
-                return 'Armenian';
-            case 'eu':
-                return 'Basque';
-            case 'nl':
-                return 'Dutch';
-            case 'ka':
-                return 'Georgian';
-            case 'gd':
-                return 'Scottish Gaelic';
-            case 'ga':
-                return 'Modern Irish';
-            case 'fa':
-                return 'Persian (Farsi)';
-            case 'bo':
-                return 'Tibetan';
-            case 'cy':
-                return 'Welsh';
-            case 'el':
-                return 'Modern Greek';
-            case 'grc':
-                return 'Ancient Greek';
-            case 'la':
-                return 'Latin';
-            case 'ang':
-                return 'Anglo-Saxon';
-            case 'enm':
-                return 'Middle English';
-            default:
-                return 'Unknown';
+        case 'en':
+            return 'English';
+        case 'es':
+            return 'Spanish';
+        case 'fr':
+            return 'French';
+        case 'it':
+            return 'Italian';
+        case 'pt':
+            return 'Portuguese';
+        case 'de':
+            return 'German';
+        case 'ru':
+            return 'Russian';
+        case 'ar':
+            return 'Arabic';
+        case 'zh':
+            return 'Chinese (Mandarin)';
+        case 'he':
+            return 'Hebrew';
+        case 'ja':
+            return 'Japanese';
+        case 'ko':
+            return 'Korean';
+        case 'sw':
+            return 'Swahili';
+        case 'sq':
+            return 'Albanian';
+        case 'hy':
+            return 'Armenian';
+        case 'eu':
+            return 'Basque';
+        case 'nl':
+            return 'Dutch';
+        case 'ka':
+            return 'Georgian';
+        case 'gd':
+            return 'Scottish Gaelic';
+        case 'ga':
+            return 'Modern Irish';
+        case 'fa':
+            return 'Persian (Farsi)';
+        case 'bo':
+            return 'Tibetan';
+        case 'cy':
+            return 'Welsh';
+        case 'el':
+            return 'Modern Greek';
+        case 'grc':
+            return 'Ancient Greek';
+        case 'la':
+            return 'Latin';
+        case 'ang':
+            return 'Anglo-Saxon';
+        case 'enm':
+            return 'Middle English';
+        default:
+            return 'Unknown';
         }
     }
 
@@ -416,8 +424,7 @@ class pmSensingExpansion {
 
     setUrlEnd(args) {
         if (!('history' in window)) return;
-        const path = Cast.toString(args.PATH);
-        const target = location.origin.endsWith('/') ? location.origin + path : location.origin + '/' + path;
+        const target = location.origin.endsWith('/') ? location.origin + path : `${location.origin}/${path}`;
         history.replaceState('', '', target);
     }
     queryParamOfUrl(args) {
@@ -426,7 +433,8 @@ class pmSensingExpansion {
         if (!this.validateUrl(url)) return '';
         const urlObject = new URL(url);
         const queryParams = new URLSearchParams(urlObject.search);
-        return queryParams.get(Cast.toString(args.PARAM));
+        const str = Cast.toString(args.PARAM);
+        return queryParams.get(str);
     }
 
     packaged() {

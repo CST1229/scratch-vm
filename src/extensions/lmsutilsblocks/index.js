@@ -1326,7 +1326,8 @@ class LMSUtils {
     }
 
     projectURL() {
-        return window.location.href;
+        // don't reveal URL parameters
+        return window.location.origin + window.location.pathname;
     }
 
     greenFlag(args, util) {
