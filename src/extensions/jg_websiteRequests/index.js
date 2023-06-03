@@ -155,6 +155,7 @@ class JgWebsiteRequestBlocks {
     }
 
     getWebsiteContent (args) {
+        if (!this.runtime.extensionManager.securityManager.canFetch(args.WEBSITE)) return "";
         return new Promise(resolve => {
             if (window && !window.fetch) return resolve("");
             const fetchingUrl = args.WEBSITE.replace("rawRequest()", "");
@@ -173,6 +174,7 @@ class JgWebsiteRequestBlocks {
     }
     
     getWebsiteBinaryData (args) {
+        if (!this.runtime.extensionManager.securityManager.canFetch(args.WEBSITE)) return "";
         return new Promise(resolve => {
             if (window && !window.fetch) return resolve("[]");
             const fetchingUrl = args.WEBSITE.replace("rawRequest()", "");
@@ -191,6 +193,7 @@ class JgWebsiteRequestBlocks {
     }
 
     postWithContentToWebsite (args) {
+        if (!this.runtime.extensionManager.securityManager.canFetch(args.WEBSITE)) return "";
         return new Promise(resolve => {
             if (window && !window.fetch) return resolve("");
             const body = {};

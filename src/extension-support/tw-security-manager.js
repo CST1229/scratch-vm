@@ -1,5 +1,79 @@
 /* eslint-disable no-unused-vars */
 
+// a lot of this is pasted from turbowarp scratch-gui
+
+/**
+ * @param {string} url Original URL string
+ * @returns {URL|null} A URL object if it is valid and of a known protocol, otherwise null.
+ */
+const parseURL = url => {
+    let parsed;
+    try {
+        parsed = new URL(url);
+    } catch (e) {
+        return null;
+    }
+    const protocols = ['http:', 'https:', 'ws:', 'wss:', 'data:', 'blob:'];
+    if (!protocols.includes(parsed.protocol)) {
+        return null;
+    }
+    return parsed;
+};
+/**
+ * 
+ * Trusted extensions are loaded automatically and without a sandbox.
+ * @param {string} url URL as a string.
+ * @returns {boolean} True if the extension can is trusted
+ */
+const isTrustedExtension = url => (
+    url.startsWith('https://extensions.turbowarp.org/') ||
+    url.startsWith('http://localhost:8000/')
+);
+
+/**
+ * @param {URL} parsed Parsed URL object
+ * @returns {boolean} True if the URL is part of the builtin set of URLs to always trust fetching from.
+ */
+const isAlwaysTrustedForFetching = parsed => (
+    // Note that the regexes here don't need to be perfect. It's okay if we let extensions try to fetch
+    // resources from eg. GitHub Pages domains that aren't actually valid usernames. They'll just get
+    // a network error.
+    // URL parsing will always convert the parsed origin to lowercase, so we don't need case
+    // insensitivity here.
+
+    // If we would trust loading an extension from here, we can trust loading resources too.
+    isTrustedExtension(parsed.href) ||
+
+    // Any TurboWarp service such as trampoline
+    parsed.origin === 'https://turbowarp.org' ||
+    parsed.origin.endsWith('.turbowarp.org') ||
+    parsed.origin.endsWith('.turbowarp.xyz') ||
+
+    // GitHub
+    parsed.origin === 'https://raw.githubusercontent.com' ||
+    parsed.origin === 'https://api.github.com' ||
+    parsed.origin.endsWith('.github.io') ||
+
+    // GitLab
+    parsed.origin === 'https://gitlab.com' ||
+    parsed.origin.endsWith('.gitlab.io') ||
+
+    // BitBucket
+    parsed.origin.endsWith('.bitbucket.io') ||
+
+    // Itch
+    parsed.origin.endsWith('.itch.io') ||
+
+    // GameJolt
+    parsed.origin === 'https://api.gamejolt.com' ||
+
+    // httpbin
+    parsed.origin === 'https://httpbin.org' ||
+
+    // ScratchDB
+    parsed.origin === 'https://scratchdb.lefty.one'
+);
+
 /**
  * Responsible for determining various policies related to custom extension security.
  * The default implementation prevents automatic extension loading, but grants any
@@ -27,14 +101,16 @@
  * };
  * ```
  */
+const fetchOriginsTrustedByUser = new Set();
 class SecurityManager {
     /**
      * Determine the typeof sandbox to use for a certain custom extension.
      * @param {string} extensionURL The URL of the custom extension.
      * @returns {'worker'|'iframe'|'unsandboxed'|Promise<'worker'|'iframe'|'unsandboxed'>}
      */
-    getSandboxMode (extensionURL) {
-        return Promise.resolve('unsandboxed');
+    getSandboxMode(extensionURL) {
+        return isTrustedExtension(extensionURL)
+            ? Promise.resolve('unsandboxed') : Promise.resolve('iframe');
     }
 
     /**
@@ -44,10 +120,16 @@ class SecurityManager {
      * @param {string} extensionURL The URL of the custom extension.
      * @returns {Promise<boolean>|boolean}
      */
-    canLoadExtensionFromProject (extensionURL) {
-        // Default to false for security
-        // set to true so that custom extensions can be used
-        return Promise.resolve(true);
+    canLoadExtensionFromProject(extensionURL) {
+        if (isTrustedExtension(extensionURL)) {
+            return true;
+        }
+        /* eslint-disable max-len */
+        return confirm(`The project wants to load a custom extension from the URL:
+${extensionURL}
+While the code will be sandboxed, it will still have access to information about your device such as your IP and general location. Make sure you trust the author of this extension before continuing.
+Allow this?`);
+        /* eslint-enable max-len */
     }
 
     /**
@@ -58,9 +140,30 @@ class SecurityManager {
      * @param {string} resourceURL
      * @returns {Promise<boolean>|boolean}
      */
-    canFetch (resourceURL) {
-        // By default, allow any requests.
-        return Promise.resolve(true);
+    canFetch(resourceURL) {
+        return true;
+        /*
+        const parsed = parseURL(resourceURL);
+        if (!parsed) {
+            return false;
+        }
+        if (isAlwaysTrustedForFetching(parsed)) {
+            return true;
+        }
+        if (fetchOriginsTrustedByUser.has(origin)) {
+            return true;
+        }
+        const allowed = confirm(`The project wants to connect to the website:
+${resourceURL}
+This could be used to download images or sounds, implement multiplayer, access an API, or for` +
+    `malicious purposes. This will share your IP address, general location, and possibly other data with the website.
+If allowed, further requests to the same website will be automatically allowed.
+Allow this?`);
+        if (allowed) {
+            fetchOriginsTrustedByUser.add(origin);
+        }
+        return allowed;
+        */
     }
 
     /**
@@ -70,9 +173,15 @@ class SecurityManager {
      * @param {string} websiteURL
      * @returns {Promise<boolean>|boolean}
      */
-    canOpenWindow (websiteURL) {
-        // By default, allow all.
-        return Promise.resolve(true);
+    canOpenWindow(websiteURL) {
+        const parsed = parseURL(websiteURL);
+        if (!parsed) {
+            return false;
+        }
+        return confirm(`The project wants to open a new window or tab with the URL:
+${websiteURL}
+This website has not been reviewed by the Codebase developers. It may contain dangerous or malicious code.
+Allow this?`);
     }
 
     /**
@@ -83,9 +192,15 @@ class SecurityManager {
      * @param {string} websiteURL
      * @returns {Promise<boolean>|boolean}
      */
-    canRedirect (websiteURL) {
-        // By default, allow all.
-        return Promise.resolve(true);
+    canRedirect(websiteURL) {
+        const parsed = parseURL(websiteURL);
+        if (!parsed) {
+            return false;
+        }
+        return confirm(`The project wants to navigate this tab to the URL:
+${websiteURL}
+This website has not been reviewed by the Codebase developers. It may contain dangerous or malicious code.
+Allow this?`);
     }
 
     /**
@@ -94,7 +209,7 @@ class SecurityManager {
      * Note that, even if this returns true, success is not guaranteed.
      * @returns {Promise<boolean>|boolean}
      */
-    canRecordAudio () {
+    canRecordAudio() {
         return Promise.resolve(true);
     }
 
@@ -103,7 +218,7 @@ class SecurityManager {
      * Note that, even if this returns true, success is not guaranteed.
      * @returns {Promise<boolean>|boolean}
      */
-    canRecordVideo () {
+    canRecordVideo() {
         return Promise.resolve(true);
     }
 
@@ -113,7 +228,7 @@ class SecurityManager {
      * Note that, even if this returns true, success is not guaranteed.
      * @returns {Promise<boolean>|boolean}
      */
-    canReadClipboard () {
+    canReadClipboard() {
         return Promise.resolve(true);
     }
 
@@ -122,7 +237,7 @@ class SecurityManager {
      * Note that, even if this returns true, success is not guaranteed.
      * @returns {Promise<boolean>|boolean}
      */
-    canNotify () {
+    canNotify() {
         return Promise.resolve(true);
     }
 }
