@@ -39,11 +39,12 @@ const generateAllow = () => Object.entries(featurePolicy)
 const createFrame = () => {
     const element = document.createElement("iframe");
     const frameId = generateQuadUid(); // this is how we differentiate iframe messages from other messages
-    // hopefully pm doesnt do sonme stupid shit that makes this not work lol
+    // hopefully pm doesnt do sonme weird stuff that makes this not work lol
     // console.log(frameId); // remove later lol
     element.dataset.id = frameId;
     element.style.display = "none";
     element.setAttribute('aria-hidden', 'true');
+    // allow modals so people can use alert & stuff
     element.sandbox = 'allow-scripts allow-modals';
     element.allow = generateAllow();
     document.body.append(element);
@@ -57,7 +58,7 @@ const origin = location.origin;
  * @param {MessageEvent} event 
  * @param {HTMLIFrameElement} iframe 
  * @param {Function} removeHandler 
- * @returns fuck you
+ * @returns nothing
  */
 const messageHandler = (event, iframe, removeHandler) => new Promise(resolve => {
     // console.log(event.origin) // remove later
@@ -65,7 +66,7 @@ const messageHandler = (event, iframe, removeHandler) => new Promise(resolve => 
     // if (event.origin !== iframe.contentDocument.location.origin) return; 
     // yea event origin is just location
     // console.log(event.origin, origin)
-    // why the hell is event.origin null
+    // why is event.origin null
     // ok we arent checking origin because its just null for some reason
     // if (event.origin !== origin) return;
     // console.log(event.data.payload)
@@ -92,38 +93,37 @@ const messageHandler = (event, iframe, removeHandler) => new Promise(resolve => 
 });
 
 /**
- * yeah this doesnt actually check if its a promise
- * just returns the code that lets you do that lmao
+ * generates a string that can be placed into the iframe src
+ * @param {string} code the code
+ * @returns the code that can be placed into the eval in the iframe src
  */
-const isPromiseFunction = () => `function isPromise(p) {
-    if (typeof p !== "object") return;
-    if (!p.__proto__) return;
-    if (!p.__proto__.toString) return;
-    return p.__proto__.toString() === "[object Promise]";
-};`;
+const prepareCodeForEval = (code) => {
+    const escaped = JSON.stringify(code);
+    // when the html encounters a closing script tag, itll end the script
+    // so just put a backslash before it and it should be fine
+    const scriptEscaped = escaped.replace('<\/script>', '<\\/script>');
+    return scriptEscaped;
+}
 
 const generateEvaluateSrc = (code, frame) => {
     // this puts some funny stuff in the iframe src
     // so that it actually works
     const runnerCode = `(async () => {
-    const parent = window.parent;
-    const origin = ${JSON.stringify(origin)};
-
     let result = null;
     let success = true;
     try {
-        result = eval(${JSON.stringify(code)});
+        // techincally eval can also postMessage
+        // and also modify success & result probably
+        // but theres no real reason to prevent it
+        // nor does the user have any reason to do it
+        result = await eval(${prepareCodeForEval(code)});
     } catch (err) {
         success = false;
         result = err;
     }
 
-    ${isPromiseFunction()}
-
-    if (isPromise(result)) {
-        result = await result;
-    }
-
+    const parent = window.parent;
+    const origin = ${JSON.stringify(origin)};
     // console.log(result,success);
     // console.log(origin);
 
@@ -146,7 +146,7 @@ const generateEvaluateSrc = (code, frame) => {
                 },
             }, origin);
         } catch (err) {
-            // ok we cant stringify it just error lmao
+            // ok we cant stringify it just error
             parent.postMessage({
                 payload: {
                     success: false,
@@ -161,12 +161,15 @@ const generateEvaluateSrc = (code, frame) => {
     const html = [
         '<!DOCTYPE html>',
         '<html lang="en-US">',
-        '<head>', // the html head isnt required i just think its funny to add
+        // the html head isnt required i just think its sily to add and shouldnt affect anything
+        '<head>',
         '<title>the an one of an iframe</title>',
         '</head>',
+        // same story with adding actual elements
         '<body>',
         '<h1><p>epic computing in progress...</p></h1>',
-        '<img src="https://media.tenor.com/jXQiJUuqfM8AAAAd/type-emoji.gif">', // hehe haw
+        // removed for being not cool!
+        // '<img src="https://media.tenor.com/jXQiJUuqfM8AAAAd/type-emoji.gif">',
         '<script>',
         runnerCode,
         '</script>',
@@ -174,7 +177,7 @@ const generateEvaluateSrc = (code, frame) => {
         '</html>'
     ].join("\n");
 
-    const blob = new Blob([html], { type: 'text/html' });
+    const blob = new Blob([html], { type: 'text/html;charset=UTF-8' });
     const url = URL.createObjectURL(blob);
 
     return url;
@@ -185,14 +188,13 @@ class SandboxRunner {
         return new Promise(resolve => {
             const frame = createFrame();
             /**
-             * please vscode show me the fucking autofill
+             * please vscode show me the autofill
              * @param {MessageEvent} e 
              */
             const trueHandler = e => {
-                // this shit stupid but we need to remove
+                // this code is weird but we need to remove
                 // event handler ladter
-                // also i want to die after this shit
-                // console.log(e); // idk its being weird so
+                // console.log(e); // debug
                 messageHandler(e, frame, trueHandler).then(payload => {
                     // console.log(payload)
                     resolve({

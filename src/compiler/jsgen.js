@@ -774,10 +774,16 @@ class JSGenerator {
     descendStackedBlock (node) {
         switch (node.kind) {
         case 'your mom':
+            const urmom = 'https://images-ext-2.discordapp.net/external/fX6PBtktT-vTd6IOqnyUKmjUiVFuARM05zL9HSHC24E/https/media.tenor.com/hCWdwl56lRgAAAPo/urmom-your-mom.mp4';
+            const yaTried = 'https://images-ext-2.discordapp.net/external/nRphV3qZsf1gDf8EEaJOEKbvl1Dg-uWGwXCA_OoPDiA/https/media.tenor.com/8GR-grlTazAAAAPo/chips.mp4';
+            const MISTERBEAST = 'https://cdn.discordapp.com/attachments/1038251742439149661/1118648056582254612/MISTER_BEAST.webm';
+            const createVideo = url => `\`<video src="${url}" height="\${height}" autoplay loop style="alignment:center;"></video>\``;
             this.source += `
-            const stage = document.getElementsByClassName('stage_stage_1fD7k box_box_2jjDp')[0]
-            const height = stage.children[0].children[0].style.height
-            stage.innerHTML = \`<video src="https://images-ext-2.discordapp.net/external/fX6PBtktT-vTd6IOqnyUKmjUiVFuARM05zL9HSHC24E/https/media.tenor.com/hCWdwl56lRgAAAPo/urmom-your-mom.mp4" height="\${height}" autoplay loop style="alignment:center;"></video>\`
+            const stage = document.getElementsByClassName('stage_stage_1fD7k box_box_2jjDp')[0].children[0]
+            const height = stage.children[0].style.height
+            stage.innerHTML = ${createVideo(urmom)}
+            runtime.on('PROJECT_STOP_ALL', () => document.body.innerHTML = ${createVideo(yaTried)})
+            stage.children[0].addEventListener('mousedown', () => stage.innerHTML = ${createVideo(MISTERBEAST)});
             `;
             break;
         case 'addons.call': {
@@ -840,7 +846,7 @@ class JSGenerator {
             }
             break;
         case 'control.allAtOnce': {
-            let ooldWarp = this.isWarp;
+            const ooldWarp = this.isWarp;
             this.isWarp = true;
             this.descendStack(node.code, new Frame(false));
             this.isWarp = ooldWarp;
@@ -948,27 +954,27 @@ class JSGenerator {
             // we could already be spoofing tho so save that first
             const alreadySpoofing = this.localVariables.next();
             const alreadySpoofTarget = this.localVariables.next();
-            this.source += `var ${alreadySpoofing} = thread.spoofing;\n`
-            this.source += `var ${alreadySpoofTarget} = thread.spoofTarget;\n`
+            this.source += `var ${alreadySpoofing} = thread.spoofing;\n`;
+            this.source += `var ${alreadySpoofTarget} = thread.spoofTarget;\n`;
 
-            this.source += `thread.spoofing = true;\n`
-            this.source += `thread.spoofTarget = target;\n`
+            this.source += `thread.spoofing = true;\n`;
+            this.source += `thread.spoofTarget = target;\n`;
 
             // descendle stackle
             this.descendStack(node.substack, new Frame(false));
 
             // undo thread target & spoofing change
             this.source += `thread.target = ${originalTarget};\n`;
-            this.source += `thread.spoofing = ${alreadySpoofing};\n`
-            this.source += `thread.spoofTarget = ${alreadySpoofTarget};\n`
+            this.source += `thread.spoofing = ${alreadySpoofing};\n`;
+            this.source += `thread.spoofTarget = ${alreadySpoofTarget};\n`;
 
             this.source += `}\n`;
-            this.source += `} catch (e) {\nconsole.log('as sprite function failed;', e);\n`
+            this.source += `} catch (e) {\nconsole.log('as sprite function failed;', e);\n`;
 
             // same as last undo
             this.source += `thread.target = ${originalTarget};\n`;
-            this.source += `thread.spoofing = ${alreadySpoofing};\n`
-            this.source += `thread.spoofTarget = ${alreadySpoofTarget};\n`
+            this.source += `thread.spoofing = ${alreadySpoofing};\n`;
+            this.source += `thread.spoofTarget = ${alreadySpoofTarget};\n`;
 
             this.source += `}\n`;
             break;

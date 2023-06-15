@@ -20,15 +20,17 @@ const EffectOptions = {
 };
 
 const urlToReportUrl = (url) => {
-    const split = String(url).split('://');
-    let idx = 1;
-    if (split.length <= 1) {
-        idx = 0;
+    let urlObject;
+    try {
+        urlObject = new URL(url);
+    } catch {
+        // we cant really throw an error in this state since it halts any blocks
+        // or return '' since thatll just confuse the api likely
+        // so just use example.com
+        return 'example.com';
     }
-    const afterProtoc = split[idx];
-    if (!afterProtoc) return '';
-    const urlSplit = afterProtoc.split(/[?#&\/\\]+/gmi);
-    return urlSplit[0];
+    // use host name
+    return urlObject.hostname;
 };
 
 // to avoid taking 1290 years for each url set
@@ -56,7 +58,7 @@ const isUrlRatedSafe = (url) => {
             return resolve(safeOriginUrls[saveUrl]);
         }
 
-        fetch(`https://pm-bapi.vercel.app/api/safeurl?url=${url}`).then(res => {
+        fetch(`https://pm-bapi.vercel.app/api/safeurl?url=${saveUrl}`).then(res => {
             if (!res.ok) {
                 resolve(true);
                 return;

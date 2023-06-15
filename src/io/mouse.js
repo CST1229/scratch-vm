@@ -109,8 +109,8 @@ class Mouse {
                     // check if click id is equal (otherwise we clicked this frame too)
                     if (thisClickId !== this._clickId) return;
                     this._isClicked = false;
-                })
-            })
+                });
+            });
 
             // Do not trigger if down state has not changed
             if (previousDownState === this._isDown) return;

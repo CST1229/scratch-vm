@@ -76,7 +76,7 @@ const isAlwaysTrustedForFetching = parsed => (
 
 /**
  * Responsible for determining various policies related to custom extension security.
- * The default implementation prevents automatic extension loading, but grants any
+ * The default implementation restricts automatic extension loading, but grants any
  * loaded extensions the maximum possible capabilities so as to retain compatibility
  * with a vanilla scratch-vm. You may override properties of an instance of this class
  * to customize the security policies as you see fit, for example:
@@ -238,6 +238,44 @@ Allow this?`);
      * @returns {Promise<boolean>|boolean}
      */
     canNotify() {
+        return Promise.resolve(true);
+    }
+
+    /**
+     * Determine whether an extension is allowed to fetch a remote resource URL.
+     * This only applies to unsandboxed extensions that use the appropriate Scratch.* APIs.
+     * Sandboxed extensions ignore this entirely as there is no way to force them to use our APIs.
+     * data: and blob: URLs are always allowed (this method is never called).
+     * @param {string} resourceURL
+     * @returns {Promise<boolean>|boolean}
+     */
+    canFetch (resourceURL) {
+        // By default, allow any requests.
+        return Promise.resolve(true);
+    }
+
+    /**
+     * Determine whether an extension is allowed to open a new window or tab to a given URL.
+     * This only applies to unsandboxed extensions. Sandboxed extensions are unable to open windows.
+     * javascript: URLs are always rejected (this method is never called).
+     * @param {string} websiteURL
+     * @returns {Promise<boolean>|boolean}
+     */
+    canOpenWindow (websiteURL) {
+        // By default, allow all.
+        return Promise.resolve(true);
+    }
+
+    /**
+     * Determine whether an extension is allowed to redirect the current tab to a given URL.
+     * This only applies to unsandboxed extensions. Sandboxed extensions are unable to redirect the parent
+     * window, but are free to redirect their own sandboxed window.
+     * javascript: URLs are always rejected (this method is never called).
+     * @param {string} websiteURL
+     * @returns {Promise<boolean>|boolean}
+     */
+    canRedirect (websiteURL) {
+        // By default, allow all.
         return Promise.resolve(true);
     }
 }

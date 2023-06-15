@@ -65,9 +65,10 @@ class JgScratchAuthenticateBlocks {
                 return "The user has declined the ability to authenticate.";
             }
         }
-        return new Promise((resolve, reject) => {
+        return new Promise(resolve => {
+            const sanitizedName = encodeURIComponent(String(args.NAME).substring(0, 256).replace(/[^a-zA-Z0-9 _-]+/gmi, "_"))
             const login = window.open(
-                `https://auth.itinerary.eu.org/auth/?redirect=${btoa(window.location.origin)}&name=${String(args.NAME).length > 0 ? encodeURIComponent(String(args.NAME).substring(0, 256)) : "PenguinMod"}`,
+                `https://auth.itinerary.eu.org/auth/?redirect=${btoa(window.location.origin)}&name=${sanitizedName.length > 0 ? sanitizedName : "PenguinMod"}`,
                 "Scratch Authentication",
                 `scrollbars=yes,resizable=yes,status=no,location=yes,toolbar=no,menubar=no,width=768,height=512,left=200,top=200`
             );

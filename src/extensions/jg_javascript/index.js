@@ -5,8 +5,8 @@ const Cast = require('../../util/cast');
 
 /**
  * Class
- * oh yea fuck you, you cant access util in the runner anymore
- * cry about it all you want im not adding it im done with implementing eval in PM
+ * oh yea you cant access util in the runner anymore
+ * im not adding it because im done with implementing eval in PM since it was done like 3 times
  * @constructor
  */
 class jgJavascript {
@@ -110,7 +110,7 @@ class jgJavascript {
         })
     }
     javascriptHat(...args) {
-        // its the same thing lmao
+        // its the same thing lol
         return this.javascriptBool(...args);
     }
 }

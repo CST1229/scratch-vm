@@ -65,6 +65,8 @@ ${blockSeparator}
 </block>
 ${blockSeparator}
 `+/* new blocks */`
+%b18> `+/* exactly equals */`
+${blockSeparator}
 %b6> `+/* part of ratio */`
 %b7> `+/* simplify of ratio */`
 ${blockSeparator}
@@ -333,6 +335,22 @@ class pmOperatorsExpansion {
                         },
                     }
                 },
+                {
+                    opcode: 'exactlyEqual',
+                    text: '[ONE] exactly equals [TWO]?',
+                    blockType: BlockType.BOOLEAN,
+                    disableMonitor: true,
+                    arguments: {
+                        ONE: {
+                            type: ArgumentType.STRING,
+                            defaultValue: "a"
+                        },
+                        TWO: {
+                            type: ArgumentType.STRING,
+                            defaultValue: "b"
+                        },
+                    }
+                },
             ],
             menus: {
                 part: {
@@ -421,6 +439,11 @@ class pmOperatorsExpansion {
     isEven(args) {
         const num = Cast.toNumber(args.NUM);
         return num % 2 == 0;
+    }
+
+    exactlyEqual(args) {
+        // everyone requested this but watch literally no one use it
+        return args.ONE === args.TWO;
     }
 
     reverseChars(args) {

@@ -124,30 +124,46 @@ class ProjectPermissionManager {
         });
         return true;
     }
+    static CanCreateURLObject(url) {
+        let success = true;
+        try {
+            new URL(url);
+        } catch {
+            success = false;
+        }
+        return success;
+    }
     static IsDataUrl(url) {
-        const match = String(url).match(/data:[^/]*\/[^;]*;base64,/gmi);
-        if (!match) return false;
-        return match.length > 0;
+        // if its not a valid url
+        // its probably not a data url
+        if (!this.CanCreateURLObject(url)) return false;
+        // create url object cuz ez to read
+        const urlObject = new URL(url);
+        // now we can just check the protocol
+        return urlObject.protocol === 'data:';
     };
     static IsUrlSafe(url) { // checks for non-kid friendly urls because that would be a big stinker
-        const origin = String(url).match(/((http(s|)|(ws|wss)):\/\/)([^\n]+)\.([^\n/?#&]+)/gmi);
-        // custom urls cannot be checked with this method, just say its safe for now
-        if ((!origin) && (ProjectPermissionManager.IsDataUrl(url))) return true;
-        // we dont know what the hell this is just say yup thas good
-        if (!origin) return true;
+        // we dont know what this is just say yup thas good
+        if (!this.CanCreateURLObject(url)) return false;
+        // custom urls cannot be checked yet, just say its safe for now
+        if (ProjectPermissionManager.IsDataUrl(url)) return true;
+        const urlObject = new URL(url);
+        const origin = urlObject.origin.toLowerCase();
+        // check origin for stuff
         let returningValue = true;
-        for (let i = 0; i < origin.length; i++) {
-            const link = origin[i];
-            if (
-                link.includes("xxx")
-                || link.includes("adult")
-                || link.includes(atob("c2V4"))
-                || link.includes(atob("cG9ybg=="))
-                || link.includes(atob("Ym9vcnU="))
-                || link.includes(atob("aGVudGFp"))
-            ) returningValue = false;
-            // const mainName = link.match(/(?=(\.|\/\/))[^\n]+(?=(\.))/gmi)[0].replace(/(\/\/|)[^\n]+(?=(\.))/gmi, "").replace(/\/\//gmi, "")
-        }
+        // obviously this can be bypassed
+        // but it blocks large or well-known sites
+        // from working straight out of the gate
+        // projects with these sites will not be approved anyways
+        if (
+            origin.includes("xxx")
+            || origin.includes("adult")
+            || origin.includes(atob("c2V4"))
+            || origin.includes(atob("cG9ybg=="))
+            || origin.includes(atob("Ym9vcnU="))
+            || origin.includes(atob("aGVudGFp"))
+        ) returningValue = false;
+        // const mainName = link.match(/(?=(\.|\/\/))[^\n]+(?=(\.))/gmi)[0].replace(/(\/\/|)[^\n]+(?=(\.))/gmi, "").replace(/\/\//gmi, "")
         return returningValue;
     };
 };
