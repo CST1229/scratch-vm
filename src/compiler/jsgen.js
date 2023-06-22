@@ -737,8 +737,8 @@ class JSGenerator {
                 this.source += `${this.generateCompatibilityLayerCall(node, isLastInLoop, true)};\n`;
             } else if (node.blockType === BlockType.LOOP) {
                 // Only reset the stack frame once (at the start of the loop)
-                // so that loops can properly maintain state,
-                // and for compatibility with things like repeat ()
+                // for interpreter compatibility
+                // (useful for C blocks that maintain state, like repeat ())
                 this.source += `thread.stackFrames[thread.stackFrames.length - 1].reuse(this.isWarp);`;
                 this.source += `while (${this.generateCompatibilityLayerCall(node, isLastInLoop, false)}) {`;
                 this.descendStack(node.substacks[1] ?? [], new Frame(true));
