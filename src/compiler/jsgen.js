@@ -394,7 +394,18 @@ class JSGenerator {
         TypedInput,
         ConstantInput,
         VariableInput,
-        Frame
+        Frame,
+        VariablePool,
+        TYPE_NUMBER,
+        TYPE_STRING,
+        TYPE_BOOLEAN,
+        TYPE_UNKNOWN,
+        TYPE_NUMBER_NAN,
+        PEN_EXT,
+        PEN_STATE,
+        factoryNameVariablePool,
+        functionNameVariablePool,
+        generatorNameVariablePool
     }
 
     /**
