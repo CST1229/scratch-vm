@@ -586,5 +586,7 @@ const scopedEval = source => {
 
 execute.scopedEval = scopedEval;
 execute.runtimeFunctions = runtimeFunctions;
+// not actually used, this is an export for extensions
+execute.globalState = globalState;
 
 module.exports = execute;

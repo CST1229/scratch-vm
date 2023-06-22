@@ -390,6 +390,13 @@ class JSGenerator {
         this.debug = this.target.runtime.debug;
     }
 
+    static exports = {
+        TypedInput,
+        ConstantInput,
+        VariableInput,
+        Frame
+    }
+
     /**
      * Enter a new frame
      * @param {Frame} frame New frame.

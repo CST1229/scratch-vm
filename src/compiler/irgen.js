@@ -1508,6 +1508,10 @@ class IRGenerator {
         this.analyzedProcedures = [];
     }
 
+    static exports = {
+        ScriptTreeGenerator
+    }
+
     addProcedureDependencies (dependencies) {
         for (const procedureVariant of dependencies) {
             if (this.procedures.hasOwnProperty(procedureVariant)) {

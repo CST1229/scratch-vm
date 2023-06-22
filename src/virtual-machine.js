@@ -29,6 +29,10 @@ require('canvas-toBlob');
 const {exportCostume} = require('./serialization/tw-costume-import-export');
 const Base64Util = require('./util/base64-util');
 
+const IRGenerator = require('./compiler/irgen');
+const JSGenerator = require('./compiler/jsgen');
+const jsexecute = require('./compiler/jsexecute');
+
 const RESERVED_NAMES = ['_mouse_', '_stage_', '_edge_', '_myself_', '_random_'];
 
 const CORE_EXTENSIONS = [
@@ -217,7 +221,10 @@ class VirtualMachine extends EventEmitter {
          */
         this.exports = {
             Sprite,
-            RenderedTarget
+            RenderedTarget,
+            IRGenerator,
+            JSGenerator,
+            jsexecute
         };
     }
 
