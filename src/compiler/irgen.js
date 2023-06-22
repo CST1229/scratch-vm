@@ -1396,7 +1396,7 @@ class ScriptTreeGenerator {
             fields[name] = block.fields[name].value;
         }
         const blockInfo = this.getBlockInfo(block.opcode);
-        const blockType = blockInfo.info.blockType ?? BlockType.COMMAND;
+        const blockType = blockInfo?.info?.blockType ?? BlockType.COMMAND;
         if (blockInfo) {
             const branchCount = blockInfo.info.branchCount;
             for (let i = 1; i <= branchCount; i++) {
