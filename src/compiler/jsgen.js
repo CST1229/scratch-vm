@@ -3,6 +3,7 @@ const Cast = require('../util/cast');
 const VariablePool = require('./variable-pool');
 const jsexecute = require('./jsexecute');
 const environment = require('./environment');
+const BlockType = require('../extension-support/block-type');
 
 // Imported for JSDoc types, not to actually use
 // eslint-disable-next-line no-unused-vars
@@ -435,7 +436,7 @@ class JSGenerator {
 
         case 'compat':
             // Compatibility layer inputs never use flags.
-            return new TypedInput(`(${this.generateCompatibilityLayerCall(node, false)})`, TYPE_UNKNOWN);
+            return new TypedInput(`(${this.generateCompatibilityLayerCall(node, false)})`, TYPE_UNKNOWN, true);
 
         case 'constant':
             return this.safeConstantInput(node.value);
@@ -725,7 +726,27 @@ class JSGenerator {
             // If the last command in a loop returns a promise, immediately continue to the next iteration.
             // If you don't do this, the loop effectively yields twice per iteration and will run at half-speed.
             const isLastInLoop = this.isLastBlockInLoop();
-            this.source += `${this.generateCompatibilityLayerCall(node, isLastInLoop)};\n`;
+            if (node.blockType === BlockType.COMMAND) {
+                this.source += `${this.generateCompatibilityLayerCall(node, isLastInLoop, true)};\n`;
+            } else if (node.blockType === BlockType.LOOP) {
+                // Only reset the stack frame once (at the start of the loop)
+                // so that loops can properly maintain state,
+                // and for compatibility with things like repeat ()
+                this.source += `thread.stackFrames[thread.stackFrames.length - 1].reuse(this.isWarp);`;
+                this.source += `while (${this.generateCompatibilityLayerCall(node, isLastInLoop, false)}) {`;
+                this.descendStack(node.substacks[1] ?? [], new Frame(true));
+                this.yieldLoop();
+                this.source += `}\n`;
+            } else if (node.blockType === BlockType.CONDITIONAL) {
+                this.source += `switch (${this.generateCompatibilityLayerCall(node, isLastInLoop, true)}) {\n`;
+                // substackId is always a number
+                for (const substackId in node.substacks) {
+                    this.source += `case ${substackId}:\n`;
+                    this.descendStack(node.substacks[substackId] ?? [], new Frame(false));
+                    this.source += `break;\n`;
+                }
+                this.source += `}\n`;
+            }
             if (isLastInLoop) {
                 this.source += 'if (hasResumedFromPromise) {hasResumedFromPromise = false;continue;}\n';
             }
@@ -1211,9 +1232,10 @@ class JSGenerator {
      * Generate a call into the compatibility layer.
      * @param {*} node The "compat" kind node to generate from.
      * @param {boolean} setFlags Whether flags should be set describing how this function was processed.
+     * @param {boolean} resetStackFrame Whether the stack frame should be reset.
      * @returns {string} The JS of the call.
      */
-    generateCompatibilityLayerCall (node, setFlags) {
+    generateCompatibilityLayerCall (node, setFlags, resetStackFrame) {
         const opcode = node.opcode;
 
         let result = 'yield* executeInCompatibilityLayer({';
@@ -1228,7 +1250,7 @@ class JSGenerator {
             result += `"${sanitize(fieldName)}":"${sanitize(field)}",`;
         }
         const opcodeFunction = this.evaluateOnce(`runtime.getOpcodeFunction("${sanitize(opcode)}")`);
-        result += `}, ${opcodeFunction}, ${this.isWarp}, ${setFlags}, null)`;
+        result += `}, ${opcodeFunction}, ${this.isWarp}, ${setFlags}, null, ${resetStackFrame ? 'true' : 'false'})`;
 
         return result;
     }

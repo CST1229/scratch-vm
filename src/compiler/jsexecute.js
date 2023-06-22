@@ -131,12 +131,12 @@ const isPromise = value => (
     typeof value === 'object' &&
     typeof value.then === 'function'
 );
-const executeInCompatibilityLayer = function*(inputs, blockFunction, isWarp, useFlags, blockId) {
+const executeInCompatibilityLayer = function*(inputs, blockFunction, isWarp, useFlags, blockId, resetStackFrame) {
     const thread = globalState.thread;
 
-    // reset the stackframe
+    // reset the stackframe if the block requests it
     // we only ever use one stackframe at a time, so this shouldn't cause issues
-    thread.stackFrames[thread.stackFrames.length - 1].reuse(isWarp);
+    if (resetStackFrame) thread.stackFrames[thread.stackFrames.length - 1].reuse(isWarp);
 
     const executeBlock = () => {
         const blockUtility = globalState.blockUtility;
