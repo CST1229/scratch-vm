@@ -40,11 +40,16 @@ const builtinExtensions = {
     // twFiles: replaces jgFiles as it works better on other devices
     twFiles: () => require('../extensions/tw_files'),
 
-    // pm: category expansions go here
+    // pm: category expansions & seperations go here
     // pmOperatorsExpansion: extra operators that were in the category & new ones that werent
     pmOperatorsExpansion: () => require("../extensions/pm_operatorsExpansion"),
     // pmSensingExpansion: extra sensing blocks that were in the category & new ones that werent
     pmSensingExpansion: () => require("../extensions/pm_sensingExpansion"),
+    // pmControlsExpansion: extra controls blocks that were in the category & new ones that werent
+    pmControlsExpansion: () => require("../extensions/pm_controlsExpansion"),
+
+    // pmInlineBlocks: seperates the inline function block to prevent confusled
+    pmInlineBlocks: () => require("../extensions/pm_inlineblocks"),
 
     // jg: jeremyes esxsitenisonsnsn
     // jgFiles: support for reading user files
@@ -74,9 +79,15 @@ const builtinExtensions = {
     // jgInterfaces: easier UI
     jgInterfaces: () => require("../extensions/jg_interfaces"),
     // jgCostumeDrawing: draw on costumes
+    // hiding so fir doesnt touch
     // jgCostumeDrawing: () => require("../extensions/jg_costumeDrawing"),
     // jgJavascript: this is like the 3rd time we have implemented JS blocks man
     jgJavascript: () => require("../extensions/jg_javascript"),
+    // jgPathfinding: EZ pathfinding for beginners :D hopefully
+    jgPathfinding: () => require("../extensions/jg_pathfinding"),
+    // jgAnimation: animate idk
+    // hiding so fir doesnt touch
+    // jgAnimation: () => require("../extensions/jg_animation"),
 
     // jgStorage: event extension requested by Fir & silvxrcat
     jgStorage: () => require("../extensions/jg_storage"),
@@ -137,10 +148,17 @@ const builtinExtensions = {
 
     // DT: ...
     // DTcameracontrols: ...
-    DTcameracontrols: () => require('../extensions/dt_cameracontrols')
+    DTcameracontrols: () => require('../extensions/dt_cameracontrols'),
 
     // griffpatch: ...
     // griffpatch: () => require('../extensions/griffpatch_box2d')
+
+    // iyg: erm a crep, erm a werdohhhh
+    // iygPerlin: 
+    iygPerlin: () => require('../extensions/iyg_perlin_noise'),
+    // fr: waw 3d physics!!
+    //fr3d:
+    fr3d: () => require('../extensions/fr_3d'),
 };
 
 const coreExtensionList = Object.getOwnPropertyNames(builtinExtensions);

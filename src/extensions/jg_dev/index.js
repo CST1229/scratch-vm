@@ -14,6 +14,8 @@ class JgDevBlocks {
          * @type {Runtime}
          */
         this.runtime = runtime;
+        // register compiled blocks
+        this.runtime.registerCompiledExtensionBlocks('jgDev', this.getCompileInfo());
     }
 
     // util
@@ -66,6 +68,15 @@ class JgDevBlocks {
                     }
                 },
                 {
+                    opcode: 'logArgs2',
+                    text: 'variable input [INPUT] list input [INPUT2]',
+                    blockType: BlockType.REPORTER,
+                    arguments: {
+                        INPUT: { type: ArgumentType.VARIABLE },
+                        INPUT2: { type: ArgumentType.LIST }
+                    }
+                },
+                {
                     opcode: 'setEffectName',
                     text: 'set [EFFECT] to [VALUE]',
                     blockType: BlockType.COMMAND,
@@ -110,6 +121,30 @@ class JgDevBlocks {
                         MULT: { type: ArgumentType.NUMBER, defaultValue: 4 }
                     }
                 },
+                {
+                    opcode: 'compiledIfNot',
+                    text: 'if not [CONDITION] then',
+                    branchCount: 1,
+                    blockType: BlockType.CONDITIONAL,
+                    arguments: {
+                        CONDITION: { type: ArgumentType.BOOLEAN }
+                    }
+                },
+                {
+                    opcode: 'compiledReturn',
+                    text: 'return [RETURN]',
+                    blockType: BlockType.COMMAND,
+                    isTerminal: true,
+                    arguments: {
+                        RETURN: { type: ArgumentType.STRING, defaultValue: '1' }
+                    }
+                },
+                {
+                    opcode: 'compiledOutput',
+                    text: 'compiled code',
+                    blockType: BlockType.REPORTER,
+                    disableMonitor: true
+                },
                 // {
                 //     opcode: 'whatthescallop',
                 //     text: 'bruh',
@@ -121,6 +156,51 @@ class JgDevBlocks {
                 variable: "getVariablesMenu",
             }
         };
+    }
+    /**
+     * This function is used for any compiled blocks in the extension if they exist.
+     * Data in this function is given to the IR & JS generators.
+     * Data must be valid otherwise errors may occur.
+     * @returns {object} functions that create data for compiled blocks.
+     */
+    getCompileInfo() {
+        return {
+            ir: {
+                compiledIfNot: (generator, block) => ({
+                    kind: 'stack', /* this gets replaced but we still need to say what type of block this is */
+                    condition: generator.descendInputOfBlock(block, 'CONDITION'),
+                    whenTrue: generator.descendSubstack(block, 'SUBSTACK'),
+                    whenFalse: []
+                }),
+                compiledReturn: (generator, block) => ({
+                    kind: 'stack',
+                    return: generator.descendInputOfBlock(block, 'RETURN')
+                }),
+                compiledOutput: () => ({
+                    kind: 'input' /* input is output :troll: (it makes sense in the ir & jsgen implementation ok) */
+                }),
+            },
+            js: {
+                compiledIfNot: (node, compiler, imports) => {
+                    compiler.source += `if (!(${compiler.descendInput(node.condition).asBoolean()})) {\n`;
+                    compiler.descendStack(node.whenTrue, new imports.Frame(false));
+                    // only add the else branch if it won't be empty
+                    // this makes scripts have a bit less useless noise in them
+                    if (node.whenFalse.length) {
+                        compiler.source += `} else {\n`;
+                        compiler.descendStack(node.whenFalse, new imports.Frame(false));
+                    }
+                    compiler.source += `}\n`;
+                },
+                compiledReturn: (node, compiler) => {
+                    compiler.source += `return ${compiler.descendInput(node.return).asString()};`;
+                },
+                compiledOutput: (_, compiler, imports) => {
+                    const code = Cast.toString(compiler.source);
+                    return new imports.TypedInput(JSON.stringify(code), imports.TYPE_STRING);
+                }
+            }
+        }
     }
 
     // menu
@@ -230,6 +310,10 @@ class JgDevBlocks {
         console.log(args)
         return JSON.stringify(args)
     }
+    logArgs2(args) {
+        console.log(args)
+        return JSON.stringify(args)
+    }
 
     setEffectName(args, util) {
         const PX = Cast.toNumber(args.VALUE)
@@ -252,6 +336,19 @@ class JgDevBlocks {
         if (!args.INPUT) {
             util.startBranch(1, false)
         }
+    }
+    // compiled blocks should have interpreter versions
+    compiledIfNot(args, util) {
+        const condition = Cast.toBoolean(args.CONDITION);
+        if (!condition) {
+            util.startBranch(1, false);
+        }
+    }
+    compiledReturn() {
+        return 'noop';
+    }
+    compiledOutput() {
+        return '<unavailable without compiler>';
     }
 
     multiplyTest(args, util) {

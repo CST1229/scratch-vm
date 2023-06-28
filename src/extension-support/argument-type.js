@@ -56,7 +56,21 @@ const ArgumentType = {
     /**
      * Name of sound in the current target
      */
-    SOUND: 'sound'
+    SOUND: 'sound',
+
+    /**
+     * pm: Variable menu
+     * @deprecated Not functioning as intended
+     * @todo Fix menu resetting on update & args returning variable value instead of object
+     */
+    VARIABLE: 'variable',
+
+    /**
+     * pm: List menu
+     * @deprecated Not functioning as intended
+     * @todo Fix menu resetting on update & args returning "[object Object]" instead of object
+     */
+    LIST: 'list'
 };
 
 module.exports = ArgumentType;

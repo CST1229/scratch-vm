@@ -390,6 +390,34 @@ class JSGenerator {
         this.debug = this.target.runtime.debug;
     }
 
+    static _extensionJSInfo = {};
+    static setExtensionJs(id, data) {
+        JSGenerator._extensionJSInfo[id] = data;
+    }
+    static hasExtensionJs(id) {
+        return Boolean(JSGenerator._extensionJSInfo[id]);
+    }
+    static getExtensionJs(id) {
+        return JSGenerator._extensionJSInfo[id];
+    }
+
+    static getExtensionImports() {
+        // used so extensions have things like the Frame class
+        return {
+            Frame: Frame,
+            TypedInput: TypedInput,
+            VariableInput: VariableInput,
+            ConstantInput: ConstantInput,
+            VariablePool: VariablePool,
+
+            TYPE_NUMBER: TYPE_NUMBER,
+            TYPE_STRING: TYPE_STRING,
+            TYPE_BOOLEAN: TYPE_BOOLEAN,
+            TYPE_UNKNOWN: TYPE_UNKNOWN,
+            TYPE_NUMBER_NAN: TYPE_NUMBER_NAN
+        }
+    }
+
     /**
      * Enter a new frame
      * @param {Frame} frame New frame.
@@ -428,6 +456,24 @@ class JSGenerator {
      * @returns {Input} Compiled input.
      */
     descendInput (node) {
+        // check if we have extension js for this kind
+        const extensionId = String(node.kind).split('.')[0];
+        const blockId = String(node.kind).replace(extensionId + '.', '');
+        if (JSGenerator.hasExtensionJs(extensionId) && JSGenerator.getExtensionJs(extensionId)[blockId]) {
+            // this is an extension block that wants to be compiled
+            const imports = JSGenerator.getExtensionImports();
+            const jsFunc = JSGenerator.getExtensionJs(extensionId)[blockId];
+            // return the input
+            let input = null;
+            try {
+                input = jsFunc(node, this, imports);
+            } catch (err) {
+                log.warn(extensionId + '_' + blockId, 'failed to compile JavaScript;', err);
+            }
+            log.log(input);
+            return input;
+        }
+
         switch (node.kind) {
         case 'args.boolean':
             return new TypedInput(`toBoolean(p${node.index})`, TYPE_BOOLEAN);
@@ -451,6 +497,19 @@ class JSGenerator {
                     .replace(yn, this.descendInput(point.y).asNumber());
             }
             return new TypedInput(points, TYPE_UNKNOWN);
+            
+        case 'control.inlineStackOutput': {
+            // reset this.source but save it
+            const originalSource = this.source;
+            this.source = '(yield* (function*() {';
+            // descend now since descendStack modifies source
+            this.descendStack(node.code, new Frame(false));
+            this.source += '})())';
+            // save edited
+            const stackSource = this.source;
+            this.source = originalSource;
+            return new TypedInput(stackSource, TYPE_UNKNOWN);
+        }
 
         case 'keyboard.pressed':
             return new TypedInput(`runtime.ioDevices.keyboard.getKeyIsDown(${this.descendInput(node.key).asSafe()})`, TYPE_BOOLEAN);
@@ -772,11 +831,27 @@ class JSGenerator {
      * @param {*} node Stacked node to compile.
      */
     descendStackedBlock (node) {
+        // check if we have extension js for this kind
+        const extensionId = String(node.kind).split('.')[0];
+        const blockId = String(node.kind).replace(extensionId + '.', '');
+        if (JSGenerator.hasExtensionJs(extensionId) && JSGenerator.getExtensionJs(extensionId)[blockId]) {
+            // this is an extension block that wants to be compiled
+            const imports = JSGenerator.getExtensionImports();
+            const jsFunc = JSGenerator.getExtensionJs(extensionId)[blockId];
+            // add to source
+            try {
+                jsFunc(node, this, imports);
+            } catch (err) {
+                log.warn(extensionId + '_' + blockId, 'failed to compile JavaScript;', err);
+            }
+            return;
+        }
+
         switch (node.kind) {
         case 'your mom':
-            const urmom = 'https://images-ext-2.discordapp.net/external/fX6PBtktT-vTd6IOqnyUKmjUiVFuARM05zL9HSHC24E/https/media.tenor.com/hCWdwl56lRgAAAPo/urmom-your-mom.mp4';
-            const yaTried = 'https://images-ext-2.discordapp.net/external/nRphV3qZsf1gDf8EEaJOEKbvl1Dg-uWGwXCA_OoPDiA/https/media.tenor.com/8GR-grlTazAAAAPo/chips.mp4';
-            const MISTERBEAST = 'https://cdn.discordapp.com/attachments/1038251742439149661/1118648056582254612/MISTER_BEAST.webm';
+            const urmom = 'https://penguinmod.site/dump/urmom-your-mom.mp4';
+            const yaTried = 'https://penguinmod.site/dump/chips.mp4';
+            const MISTERBEAST = 'https://penguinmod.site/dump/MISTER_BEAST.webm';
             const createVideo = url => `\`<video src="${url}" height="\${height}" autoplay loop style="alignment:center;"></video>\``;
             this.source += `
             const stage = document.getElementsByClassName('stage_stage_1fD7k box_box_2jjDp')[0].children[0]
@@ -850,6 +925,14 @@ class JSGenerator {
             this.isWarp = true;
             this.descendStack(node.code, new Frame(false));
             this.isWarp = ooldWarp;
+            break;
+        }
+        case 'control.newScript': {
+            this.source += '(new Promise(resolve => { resolve(';
+            this.source += '(yield* (function*() {';
+            this.descendStack(node.substack, new Frame(false));
+            this.source += '})())';
+            this.source += '); }));';
             break;
         }
         case 'control.exitCase':

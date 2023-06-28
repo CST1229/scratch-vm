@@ -16,6 +16,7 @@ class jgJavascript {
          * @type {runtime}
          */
         this.runtime = runtime;
+        this.util;
     }
 
     /**
@@ -93,19 +94,22 @@ class jgJavascript {
     }
 
     // blocks
-    javascriptStack(args) {
+    javascriptStack(args, util) {
+        this.util = util;
         const code = Cast.toString(args.CODE);
         return this.evaluateCode(code);
     }
-    javascriptString(args) {
+    javascriptString(args, util) {
+        this.util = util;
         const code = Cast.toString(args.CODE);
         return this.evaluateCode(code);
     }
-    javascriptBool(args) {
+    javascriptBool(args, util) {
+        this.util = util;
         return new Promise((resolve) => {
             const code = Cast.toString(args.CODE);
             this.evaluateCode(code).then(value => {
-                resolve(value == true);
+                resolve(Boolean(value));
             });
         })
     }

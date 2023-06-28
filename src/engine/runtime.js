@@ -33,6 +33,10 @@ const Touch = require('../io/touch');
 const StringUtil = require('../util/string-util');
 const uid = require('../util/uid');
 
+// Used for extension's compiled blocks.
+const JSGenerator = require('../compiler/jsgen');
+const IRGenerator = require('../compiler/irgen');
+
 const defaultBlockPackages = {
     scratch3_control: require('../blocks/scratch3_control'),
     scratch3_event: require('../blocks/scratch3_event'),
@@ -127,6 +131,17 @@ const ArgumentTypeMap = (() => {
             type: 'sound_sounds_menu',
             fieldName: 'SOUND_MENU'
         }
+    };
+    // VARIABLE and LIST are actually fields
+    // they'll be handled similarly to IMAGE
+    map[ArgumentType.VARIABLE] = {
+        fieldType: "field_variable",
+        fieldName: "VARIABLE"
+    };
+    map[ArgumentType.LIST] = {
+        fieldType: "field_variable",
+        fieldName: "LIST",
+        variableType: 'list'
     };
     return map;
 })();
@@ -387,6 +402,10 @@ class Runtime extends EventEmitter {
 
         this.cloudOptions = {
             limit: 10
+        };
+
+        this.extensionRuntimeOptions = {
+            javascriptUnsandboxed: false
         };
 
         const newCloudDataManager = cloudDataManager(this.cloudOptions);
@@ -1004,6 +1023,14 @@ class Runtime extends EventEmitter {
     compilerRegisterExtension (name, extensionObject) {
         this[`ext_${name}`] = extensionObject;
     }
+    registerCompiledExtensionBlocks (extensionId, information) {
+        if (!information) return;
+        if (!information.ir) return;
+        if (!information.js) return;
+
+        IRGenerator.setExtensionIr(extensionId, information.ir);
+        JSGenerator.setExtensionJs(extensionId, information.js);
+    }
 
     getMonitorState () {
         return this._monitorState;
@@ -1547,6 +1574,22 @@ class Runtime extends EventEmitter {
     }
 
     /**
+     * Helper for _convertPlaceholdes which handles variable dropdowns which are a specialized case of block "arguments".
+     * @param {object} argInfo Metadata about the variable dropdown
+     * @return {object} JSON blob for a scratch-blocks variable field.
+     * @private
+     */
+    _constructVariableDropdown(argInfo, placeholder) {
+        // console.log(argInfo, placeholder);
+        const isList = argInfo.type === 'list';
+        return {
+            type: 'field_variable',
+            name: placeholder,
+            variableTypes: isList ? ['list'] : ['']
+        };
+    }
+
+    /**
      * Helper for _convertForScratchBlocks which handles linearization of argument placeholders. Called as a callback
      * from string#replace. In addition to the return value the JSON and XML items in the context will be filled.
      * @param {object} context - information shared with _convertForScratchBlocks about the block, etc.
@@ -1573,6 +1616,8 @@ class Runtime extends EventEmitter {
         // check if this is not one of those cases. E.g. an inline image on a block.
         if (argTypeInfo.fieldType === 'field_image') {
             argJSON = this._constructInlineImageJson(argInfo);
+        } else if (argTypeInfo.fieldType === 'field_variable') {
+            argJSON = this._constructVariableDropdown(argInfo, placeholder);
         } else {
             // Construct input value
 

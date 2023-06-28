@@ -91,8 +91,7 @@ class Scratch3EventBlocks {
                 restartExistingThreads: true
             },
             event_always: {
-                restartExistingThreads: false,
-                edgeActivated: true
+                restartExistingThreads: false
             },
             event_whenkeypressed: {
                 restartExistingThreads: false

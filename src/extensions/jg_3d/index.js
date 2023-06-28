@@ -3,8 +3,16 @@ const Clone = require('../../util/clone');
 const ExtensionInfo = require("./info");
 const Three = require("three");
 const { OBJLoader } = require('three/examples/jsm/loaders/OBJLoader.js');
-const loader = new OBJLoader();
+const { GLTFLoader } = require('three/examples/jsm/loaders/GLTFLoader.js');
+const { FBXLoader } = require('three/examples/jsm/loaders/FBXLoader.js');
+const CANNON = require('cannon');
 
+
+const MeshLoaders = {
+    OBJ: new OBJLoader(),
+    GLTF: new GLTFLoader(),
+    FBX: new FBXLoader(),
+}
 function toRad(deg) {
     return deg * (Math.PI / 180);
 }
@@ -132,6 +140,17 @@ class Jg3DBlocks {
             height: this.runtime.stageHeight
         }
         return stage !== this.lastStageSizeWhenRendering;
+    }
+    touching(t, e) {
+        if (!!this.scene.getObjectByName(t).position&&this.scene.getObjectByName(e).position){
+        const n = new Three.Raycaster,
+        s = new Three.Raycaster;
+        n.set(this.scene.getObjectByName(t).position, new Three.Vector3(0, 0, -1)),
+        s.set(this.scene.getObjectByName(e).position, new Three.Vector3(0, 0, -1));
+        const c = n.intersectObject(e, !0),
+        i = s.intersectObject(t, !0);
+        return c.length > 0 || i.length > 0
+        } else {return false}
     }
 
     initialize() {
@@ -356,12 +375,36 @@ class Jg3DBlocks {
             }
             case 'mesh': {
                 const url = Cast.toString(args.URL);
+                // switch loaders based on file type
+                let fileType = 'obj';
+                switch (Cast.toString(args.FILETYPE)) {
+                    case '.glb / .gltf':
+                        fileType = 'glb';
+                        break;
+                    case '.fbx':
+                        fileType = 'fbx';
+                        break;
+                }
                 // we need to do a promise here so that stack continues on load
                 return new Promise((resolve) => {
+                    let loader = MeshLoaders.OBJ;
+                    switch (fileType) {
+                        case 'glb':
+                            loader = MeshLoaders.GLTF;
+                            break;
+                        case 'fbx':
+                            loader = MeshLoaders.FBX;
+                            break;
+                    }
                     loader.load(url, (object) => {
                         // success
-                        const material = new Three.MeshStandardMaterial({ color: 0xffffff });
-                        this.updateMaterialOfObjObject(object, material);
+                        if (loader === MeshLoaders.GLTF) {
+                            object = object.scene;
+                        }
+                        if (loader === MeshLoaders.OBJ) {
+                            const material = new Three.MeshStandardMaterial({ color: 0xffffff });
+                            this.updateMaterialOfObjObject(object, material);
+                        }
                         object.name = name;
                         this.existingSceneObjects.push(name);
                         object.isPenguinMod = true;
@@ -414,6 +457,9 @@ class Jg3DBlocks {
         this.createGameObject(args, util, 'plane');
     }
     createMeshObject(args, util) {
+        this.createGameObject(args, util, 'mesh');
+    }
+    createMeshObjectFileTyped(args, util) {
         this.createGameObject(args, util, 'mesh');
     }
     createLightObject(args, util) {
@@ -614,19 +660,7 @@ class Jg3DBlocks {
     }
 
     objectTouchingObject(args) {
-        if (!this.scene) return false;
-        const name1 = Cast.toString(args.NAME1);
-        const name2 = Cast.toString(args.NAME2);
-        const object1 = this.scene.getObjectByName(name1);
-        const object2 = this.scene.getObjectByName(name2);
-        if (!object1) return false;
-        if (!object2) return false;
-        if (object1.isLight) return false; // currently lights are not supported for collisions
-        if (object2.isLight) return false; // currently lights are not supported for collisions
-        const box1 = new Three.Box3().setFromObject(object1);
-        const box2 = new Three.Box3().setFromObject(object2);
-        const collision = box1.intersectsBox(box2);
-        return collision;
+        return this.touching(Cast.toString(args.NAME1), Cast.toString(args.NAME2))
     }
 }
 

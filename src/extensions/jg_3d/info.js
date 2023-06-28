@@ -58,7 +58,7 @@ function infoArgumentMenu(type, menu) {
     }
 }
 
-function createCommandBlock(opcode, text, args, icon) {
+function createCommandBlock(opcode, text, args, icon, hidden) {
     const obj = {
         opcode: opcode,
         text: text ? text : opcode,
@@ -69,6 +69,9 @@ function createCommandBlock(opcode, text, args, icon) {
     }
     if (icon) {
         obj.blockIconURI = icon;
+    }
+    if (hidden === true) {
+        obj.hideFromPalette = true;
     }
     return obj;
 }
@@ -255,6 +258,14 @@ module.exports = {
             X: infoArgument(0),
             Y: infoArgument(0),
             Z: infoArgument(0)
+        }, Icons.OBJ, true),
+        createCommandBlock('createMeshObjectFileTyped', 'create mesh named [NAME] with [FILETYPE] data: [URL] at x: [X] y: [Y] z: [Z]', {
+            NAME: infoArgument("Object1"),
+            FILETYPE: infoArgumentMenu(ArgumentType.STRING, "meshFileTypes"),
+            URL: infoArgument("data:text/plain;base64,"),
+            X: infoArgument(0),
+            Y: infoArgument(0),
+            Z: infoArgument(0)
         }, Icons.OBJ),
         createCommandBlock('createLightObject', 'create [LIGHTTYPE] light named [NAME] at x: [X] y: [Y] z: [Z]', {
             LIGHTTYPE: infoArgumentMenu(ArgumentType.STRING, "lightType"),
@@ -324,6 +335,7 @@ module.exports = {
         vector3: infoMenu(["x", "y", "z"]),
         vector2: infoMenu(["x", "y"]),
         onoff: infoMenu(["on", "off"]),
-        objectTypeList: infoMenu(["objects", "physical objects", "lights"])
+        objectTypeList: infoMenu(["objects", "physical objects", "lights"]),
+        meshFileTypes: infoMenu([".obj", ".glb / .gltf", ".fbx"])
     }
 }

@@ -163,6 +163,29 @@ class ScriptTreeGenerator {
      * @returns {Node} Compiled input node for this input.
      */
     descendInput (block) {
+        // check if we have extension ir for this opcode
+        const extensionId = String(block.opcode).split('_')[0];
+        const blockId = String(block.opcode).replace(extensionId + '_', '');
+        if (IRGenerator.hasExtensionIr(extensionId) && IRGenerator.getExtensionIr(extensionId)[blockId]) {
+            // this is an extension block that wants to be compiled
+            const irFunc = IRGenerator.getExtensionIr(extensionId)[blockId];
+            let irData = null;
+            // make sure irFunc isnt broken
+            try {
+                irData = irFunc(this, block);
+            } catch (err) {
+                log.warn(extensionId + '_' + blockId, 'failed to create IR data;', err);
+            }
+            if (irData) {
+                // check if it is this type, we dont want to descend a stack as an input
+                if (irData.kind === 'input') {
+                    // set proper kind
+                    irData.kind = extensionId + '.' + blockId;
+                    return irData;
+                }
+            }
+        }
+
         switch (block.opcode) {
         case 'colour_picker':
             return {
@@ -289,6 +312,12 @@ class ScriptTreeGenerator {
                 value: broadcastName
             };
         }
+        
+        case 'control_inline_stack_output':
+            return {
+                kind: 'control.inlineStackOutput',
+                code: this.descendSubstack(block, 'SUBSTACK')
+            };
 
         case 'looks_backdropnumbername':
             if (block.fields.NUMBER_NAME.value === 'number') {
@@ -814,6 +843,29 @@ class ScriptTreeGenerator {
      * @returns {Node} Compiled node for this block.
      */
     descendStackedBlock (block) {
+        // check if we have extension ir for this opcode
+        const extensionId = String(block.opcode).split('_')[0];
+        const blockId = String(block.opcode).replace(extensionId + '_', '');
+        if (IRGenerator.hasExtensionIr(extensionId) && IRGenerator.getExtensionIr(extensionId)[blockId]) {
+            // this is an extension block that wants to be compiled
+            const irFunc = IRGenerator.getExtensionIr(extensionId)[blockId];
+            let irData = null;
+            // make sure irFunc isnt broken
+            try {
+                irData = irFunc(this, block);
+            } catch (err) {
+                log.warn(extensionId + '_' + blockId, 'failed to create IR data;', err);
+            }
+            if (irData) {
+                // check if it is this type, we dont want to descend an input as a stack
+                if (irData.kind === 'stack') {
+                    // set proper kind
+                    irData.kind = extensionId + '.' + blockId;
+                    return irData;
+                }
+            }
+        }
+
         switch (block.opcode) {
         case 'your_mom':
             return {
@@ -853,7 +905,7 @@ class ScriptTreeGenerator {
             };
         case 'control_all_at_once':
             // In Scratch 3, this block behaves like "if 1 = 1"
-            // WE ARE IN PM MF NOW IT BEHAVES PROPERLY LESS GO
+            // WE ARE IN PM NOW IT BEHAVES PROPERLY LESS GO
             return {
                 kind: 'control.allAtOnce',
                 condition: {
@@ -983,6 +1035,11 @@ class ScriptTreeGenerator {
             return {
                 kind: 'control.runAsSprite',
                 sprite: this.descendInputOfBlock(block, 'RUN_AS_OPTION'),
+                substack: this.descendSubstack(block, 'SUBSTACK')
+            };
+        case 'control_new_script':
+            return {
+                kind: 'control.newScript',
                 substack: this.descendSubstack(block, 'SUBSTACK')
             };
         case 'data_addtolist':
@@ -1896,6 +1953,17 @@ class IRGenerator {
         this.procedures = {};
 
         this.analyzedProcedures = [];
+    }
+
+    static _extensionIRInfo = {};
+    static setExtensionIr(id, data) {
+        IRGenerator._extensionIRInfo[id] = data;
+    }
+    static hasExtensionIr(id) {
+        return Boolean(IRGenerator._extensionIRInfo[id]);
+    }
+    static getExtensionIr(id) {
+        return IRGenerator._extensionIRInfo[id];
     }
 
     addProcedureDependencies (dependencies) {

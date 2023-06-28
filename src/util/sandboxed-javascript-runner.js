@@ -51,7 +51,7 @@ const createFrame = () => {
     return element;
 };
 
-const origin = location.origin;
+const origin = window.origin;
 
 /**
  * vscode give me autofill
@@ -123,9 +123,9 @@ const generateEvaluateSrc = (code, frame) => {
     }
 
     const parent = window.parent;
-    const origin = ${JSON.stringify(origin)};
+    const origin = '*';
     // console.log(result,success);
-    // console.log(origin);
+    console.log(origin);
 
     try {
         parent.postMessage({
