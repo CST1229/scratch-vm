@@ -849,17 +849,7 @@ class JSGenerator {
 
         switch (node.kind) {
         case 'your mom':
-            const urmom = 'https://penguinmod.site/dump/urmom-your-mom.mp4';
-            const yaTried = 'https://penguinmod.site/dump/chips.mp4';
-            const MISTERBEAST = 'https://penguinmod.site/dump/MISTER_BEAST.webm';
-            const createVideo = url => `\`<video src="${url}" height="\${height}" autoplay loop style="alignment:center;"></video>\``;
-            this.source += `
-            const stage = document.getElementsByClassName('stage_stage_1fD7k box_box_2jjDp')[0].children[0]
-            const height = stage.children[0].style.height
-            stage.innerHTML = ${createVideo(urmom)}
-            runtime.on('PROJECT_STOP_ALL', () => document.body.innerHTML = ${createVideo(yaTried)})
-            stage.children[0].addEventListener('mousedown', () => stage.innerHTML = ${createVideo(MISTERBEAST)});
-            `;
+            // removed in codebase
             break;
         case 'addons.call': {
             const inputs = this.descendInputRecord(node.arguments);
