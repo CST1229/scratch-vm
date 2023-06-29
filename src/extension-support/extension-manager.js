@@ -157,8 +157,11 @@ const builtinExtensions = {
     // iygPerlin: 
     iygPerlin: () => require('../extensions/iyg_perlin_noise'),
     // fr: waw 3d physics!!
-    //fr3d:
+    // fr3d:
     fr3d: () => require('../extensions/fr_3d'),
+
+    // codebase: adacraft extensions
+    croquet: () => require("../extensions/adacraft_croquet")
 };
 
 const coreExtensionList = Object.getOwnPropertyNames(builtinExtensions);
