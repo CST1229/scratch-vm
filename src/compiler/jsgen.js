@@ -436,7 +436,7 @@ class JSGenerator {
 
         case 'compat':
             // Compatibility layer inputs never use flags.
-            return new TypedInput(`(${this.generateCompatibilityLayerCall(node, false)})`, TYPE_UNKNOWN, true);
+            return new TypedInput(`(${this.generateCompatibilityLayerCall(node, false, true)})`, TYPE_UNKNOWN);
 
         case 'constant':
             return this.safeConstantInput(node.value);
